@@ -4,6 +4,7 @@ import java.util.*;
 /** SI units; playable bed 2.54 x 1.27 m. Deterministic fixed-step simulation. */
 public final class Physics {
   public static final double W=2.54,H=1.27,R=.028575,DT=1.0/240;
+  public static final double[][] CUSHIONS={{.08,0,W/2-.08,0},{W/2+.08,0,W-.08,0},{.08,H,W/2-.08,H},{W/2+.08,H,W-.08,H},{0,.08,0,H-.08},{W,.08,W,H-.08}};
   public static final double[][] POCKETS={{0,0},{W/2,0},{W,0},{0,H},{W/2,H},{W,H}};
   public static class Ball {
     public int id; public double x,y,vx,vy,sx,sy; public boolean pocketed;
@@ -37,8 +38,7 @@ public final class Physics {
           if(Math.hypot(a.x-pt[0],a.y-pt[1])<radius){a.pocketed=true;a.vx=a.vy=0;events.add(new Event(t,"pocket",a.id,-1,p,speed));break;}}
         if(a.pocketed)continue;
         boolean hit=false;
-        if(a.x<R){a.x=R;a.vx=Math.abs(a.vx)*.82;hit=true;}if(a.x>W-R){a.x=W-R;a.vx=-Math.abs(a.vx)*.82;hit=true;}
-        if(a.y<R){a.y=R;a.vy=Math.abs(a.vy)*.82;a.vx+=a.sx*.15;hit=true;}if(a.y>H-R){a.y=H-R;a.vy=-Math.abs(a.vy)*.82;a.vx-=a.sx*.15;hit=true;}
+        for(double[] segment:CUSHIONS){double ex=segment[2]-segment[0],ey=segment[3]-segment[1];double u=Math.max(0,Math.min(1,((a.x-segment[0])*ex+(a.y-segment[1])*ey)/(ex*ex+ey*ey)));double px=segment[0]+u*ex,py=segment[1]+u*ey;double dx=a.x-px,dy=a.y-py,d=Math.hypot(dx,dy);if(d<R&&d>1e-9){double nx=dx/d,ny=dy/d,vn=a.vx*nx+a.vy*ny;if(vn<0){a.vx-=1.82*vn*nx;a.vy-=1.82*vn*ny;a.vx+=-ny*a.sx*.13;a.vy+=nx*a.sx*.13;hit=true;}a.x=px+nx*R;a.y=py+ny*R;}}
         if(hit){if(contact>=0)rail=true;events.add(new Event(t,"rail",a.id,-1,-1,speed));a.sx*=.6;}
       }
       for(int i=0;i<b.size();i++)for(int j=i+1;j<b.size();j++){
@@ -57,6 +57,6 @@ public final class Physics {
     for(Ball a:b){a.vx=a.vy=a.sx=a.sy=0;}frames.add(frame(t,b));
     return new Shot(b,frames,events,contact,rail,t);
   }
-  static Frame frame(double t,List<Ball>b){return new Frame(t,b.stream().map(a->new double[]{a.x,a.y,a.pocketed?1:0}).toArray(double[][]::new));}
+  static Frame frame(double t,List<Ball>b){return new Frame(t,b.stream().map(a->new double[]{Math.rint(a.x*10000)/10000,Math.rint(a.y*10000)/10000,a.pocketed?1:0}).toArray(double[][]::new));}
   public static boolean canPlace(List<Ball>b,double x,double y){return Double.isFinite(x)&&Double.isFinite(y)&&x>=R&&x<=W-R&&y>=R&&y<=H-R&&b.stream().noneMatch(a->a.id!=0&&!a.pocketed&&Math.hypot(a.x-x,a.y-y)<R*2.01)&&Arrays.stream(POCKETS).noneMatch(p->Math.hypot(p[0]-x,p[1]-y)<.075);}
 }

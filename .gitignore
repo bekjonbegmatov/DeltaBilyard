@@ -12,3 +12,4 @@ infra/livekit.generated.yaml
 *.key
 *.log
 infra/tls/
+*.blend1

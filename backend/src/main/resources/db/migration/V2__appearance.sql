@@ -1,0 +1,2 @@
+ALTER TABLE players ADD COLUMN character TEXT NOT NULL DEFAULT 'telegram';
+ALTER TABLE players ADD COLUMN cue TEXT NOT NULL DEFAULT 'walnut';

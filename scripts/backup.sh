@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if ! docker info >/dev/null 2>&1; then exec sudo -E bash "$0" "$@"; fi
 cd "$(dirname "$0")/.."
 mkdir -p backups
 chmod 700 backups

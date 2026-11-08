@@ -1,0 +1,2 @@
+# Keep TURN certificate synchronized with this app's Caddy certificate.
+17 */6 * * * root /usr/local/sbin/deltabilyard-turn-cert
