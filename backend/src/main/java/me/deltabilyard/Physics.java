@@ -30,11 +30,33 @@ public final class Physics {
   public record Event(double t,String type,int ball,int other,int pocket,double strength){}
   public record Frame(double t,double[][] balls){}
   public record Shot(List<Ball> balls,List<Frame> frames,List<Event> events,int firstContact,boolean railAfterContact,double duration){}
-  public static List<Ball> rack(){
+  public static List<Ball> rack(){return rack("eight");}
+  public static List<Ball> rack(String ruleSet){
+    if(ruleSet.equals("nine"))return nineRack();
     List<Ball> balls=new ArrayList<>();balls.add(new Ball(0,W*.25,H/2));
     int[] ids={1,9,2,10,8,3,4,11,5,12,6,13,7,14,15};int k=0;
     for(int row=0;row<5;row++)for(int col=0;col<=row;col++)balls.add(new Ball(ids[k++],W*.72+row*R*Math.sqrt(3)*1.005,H/2+(2*col-row)*R*1.005));
     balls.sort(Comparator.comparingInt(b->b.id));return balls;
+  }
+  private static List<Ball> nineRack(){
+    List<Ball> balls=new ArrayList<>();balls.add(new Ball(0,W*.25,H/2));
+    int[] rows={1,2,3,2,1},ids={1,2,3,4,9,5,6,7,8};int k=0;
+    for(int row=0;row<rows.length;row++)for(int col=0;col<rows[row];col++)
+      balls.add(new Ball(ids[k++],W*.72+row*R*Math.sqrt(3)*1.005,H/2+(2*col-rows[row]+1)*R*1.005));
+    balls.sort(Comparator.comparingInt(b->b.id));return balls;
+  }
+  /** Spot behind the foot spot first, then towards the head; no overlap with cue or object balls. */
+  public static void respot(List<Ball> balls,int id){
+    Ball ball=balls.stream().filter(b->b.id==id).findFirst().orElseThrow();
+    double spot=W*.72;
+    for(int direction:new int[]{1,-1})for(double distance=0;distance<W;distance+=.003){
+      double x=spot+direction*distance,y=H/2;
+      if(x<R||x>W-R)break;
+      if(balls.stream().noneMatch(b->b.id!=id&&!b.pocketed&&Math.hypot(b.x-x,b.y-y)<R*2.01)){
+        ball.x=x;ball.y=y;ball.vx=ball.vy=ball.sx=ball.sy=0;ball.pocketed=false;return;
+      }
+    }
+    throw new IllegalStateException("Нет свободного места для выставления шара");
   }
   public static Shot simulate(List<Ball> initial,double angle,double power,double spinX,double spinY){
     if(!Double.isFinite(angle)||!Double.isFinite(power)||!Double.isFinite(spinX)||!Double.isFinite(spinY)||power<.02||power>1||Math.hypot(spinX,spinY)>1.001)throw new IllegalArgumentException("Недопустимый удар");

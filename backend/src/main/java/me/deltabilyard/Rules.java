@@ -25,4 +25,25 @@ public final class Rules {
   String message=foul?"Фол: "+reason+" — ход соперника, биток с руки":keep?(breaking?"Шар забит на разбое — серия продолжается":"Свой шар забит — серия продолжается"):pots.isEmpty()?"Нет забитого шара — ход соперника":"Забит только чужой шар — ход соперника";
   return new Result(foul,message,-1,keep,assignedNow,false);
  }
+ static int lowest(List<Physics.Ball> balls){return balls.stream().filter(b->b.id>0&&!b.pocketed).mapToInt(b->b.id).min().orElse(-1);}
+ static List<Integer> pocketedObjects(Physics.Shot shot){return shot.events().stream().filter(e->e.type().equals("pocket")&&e.ball()>0).map(Physics.Event::ball).distinct().toList();}
+ public static Result evaluate(String ruleSet,List<Physics.Ball> before,Physics.Shot shot,int team,int assigned,boolean breaking,int calledPocket,int points,int pointsToWin){
+  if(ruleSet.equals("eight"))return evaluate(before,shot,team,assigned,breaking,calledPocket);
+  boolean nine=ruleSet.equals("nine"),scratch=shot.balls().get(0).pocketed;
+  List<Integer> pots=pocketedObjects(shot);int first=shot.firstContact(),required=nine?lowest(before):breaking?1:-1;
+  boolean wrong=first<0||(required>0&&first!=required);
+  long rails=shot.events().stream().filter(e->e.type().equals("rail")&&e.ball()>0).map(Physics.Event::ball).distinct().count();
+  boolean illegalBreak=breaking&&pots.isEmpty()&&rails<4;
+  boolean noRail=pots.isEmpty()&&!shot.railAfterContact();
+  boolean foul=scratch||wrong||illegalBreak||noRail;
+  if(foul){
+   String reason=scratch?"биток в лузе":wrong?(first<0?"биток не коснулся шара":"первым нужен шар №"+required):illegalBreak?"на разбое ни одного шара в лузе и менее четырёх шаров у борта":"после контакта нет ни борта, ни забитого шара";
+   String spot=nine?(pots.contains(9)?"; девятка возвращается на стол":""):pots.isEmpty()?"":"; забитые шары возвращаются на стол";
+   return new Result(true,"Фол: "+reason+spot+" — ход соперника, биток с руки",-1,false,0,false);
+  }
+  boolean win=nine?pots.contains(9):points+pots.size()>=pointsToWin;
+  if(win)return new Result(false,nine?"Девятка забита правильно — партия выиграна":pointsToWin==15?"Все 15 шаров забиты — тренировка завершена":"Забито "+(points+pots.size())+" шаров — партия выиграна",team,false,0,false);
+  return new Result(false,pots.isEmpty()?"Нет забитого шара — ход соперника":"Шар забит — серия продолжается",-1,!pots.isEmpty(),0,false);
+ }
+
 }

@@ -76,4 +76,32 @@ class GamesTest {
   Games g=game();var r=room(g);Games.normalizeSeats(r);assertEquals(0,r.seats.get(0).slot);assertEquals(1,r.seats.get(1).slot);assertEquals(1,r.hostId);
   r.mode="team";r.phase="LOBBY";action(g,r,1,"seat",3);var restored=json.readValue(json.writeValueAsString(r),Games.Room.class);Games.normalizeSeats(restored);assertEquals(3,g.index(restored,1));assertEquals(1,g.index(restored,2));restored.phase="ROUND_END";restored.winner=1;restored.roundWinner=-1;Games.normalizeSeats(restored);assertEquals(1,restored.roundWinner);restored.phase="FINISHED";Games.normalizeSeats(restored);assertEquals(1,restored.matchWinner);
  }
+ @Test void creationValidatesRuleSetAndLegacyJsonDefaultsToEight()throws Exception {
+  for(String mode:java.util.List.of("duel","team","bot","practice"))for(String rules:java.util.List.of("eight","nine","free")){
+   Games g=game();when(g.auth.user(1)).thenReturn(new Auth.User(1,"A",null,null));var r=g.create(1,json.createObjectNode().put("mode",mode).put("ruleSet",rules));assertEquals(rules,r.ruleSet);assertEquals(rules.equals("nine")?10:16,r.balls.size());assertArrayEquals(new int[]{0,0},r.rackPoints);
+   var restored=json.readValue(json.writeValueAsString(r),Games.Room.class);assertEquals(rules,restored.ruleSet);assertEquals(r.balls.size(),restored.balls.size());
+  }
+  assertEquals("eight",json.readValue("{}",Games.Room.class).ruleSet);
+  Games practice=game();when(practice.auth.user(1)).thenReturn(new Auth.User(1,"A",null,null));assertEquals(1,practice.create(1,json.createObjectNode().put("mode","practice").put("ruleSet","free").put("target",5)).target);
+  assertThrows(IllegalArgumentException.class,()->game().create(1,json.createObjectNode().put("ruleSet","invalid")));
+ }
+ void preparePot(Games.Room r,String rules,int number){r.ruleSet=rules;r.balls=Physics.rack(rules);for(var ball:r.balls)ball.pocketed=true;var cue=r.balls.get(0);cue.pocketed=false;cue.x=Physics.W/2;cue.y=.35;var target=r.balls.get(number);target.pocketed=false;target.x=Physics.W/2;target.y=.12;}
+ void pot(Games g,Games.Room r){g.command(r.code,r.seats.get(r.turn).user.id(),((com.fasterxml.jackson.databind.node.ObjectNode)cmd("shoot",r.seq)).put("angle",-Math.PI/2).put("power",Physics.powerForSpeed(1.2)));}
+ @Test void nineWinningShotNeedsNoPocketCallAndCompletesMatch(){
+  Games g=game();var r=room(g);preparePot(r,"nine",9);pot(g,r);assertEquals(0,r.roundWinner);assertEquals(1,r.potted.get(1L));assertEquals("SHOT",r.phase);r.deadline=0;g.tick();assertEquals("FINISHED",r.phase);assertEquals(0,r.matchWinner);assertTrue(r.message.contains("Девятка"));
+ }
+ @Test void foulNineIsRespottedAndWinnerNotAwarded(){
+  Games g=game();var r=room(g);preparePot(r,"nine",9);var one=r.balls.get(1);one.pocketed=false;one.x=.4;one.y=.8;pot(g,r);assertEquals(-1,r.winner);assertTrue(r.ballInHand);assertEquals(1,r.turn);assertFalse(r.balls.get(9).pocketed);assertTrue(r.shot.balls().get(9).pocketed,"Shot recording must retain actual result before respot");assertTrue(r.potted.isEmpty());
+ }
+ @Test void freePointsRetainSeriesAndWinAtEightThenReset(){
+  Games g=game();var r=room(g);preparePot(r,"free",8);r.rackPoints[0]=6;pot(g,r);assertEquals(7,r.rackPoints[0]);assertEquals(0,r.turn);assertEquals(-1,r.winner);r.phase="AIM";preparePot(r,"free",7);r.deadline=Games.now()+45000;pot(g,r);assertEquals(8,r.rackPoints[0]);assertEquals(0,r.winner);assertEquals(2,r.potted.get(1L));g.newRack(r);assertArrayEquals(new int[]{0,0},r.rackPoints);assertEquals("free",r.ruleSet);assertEquals(16,r.balls.size());
+ }
+ @Test void freeFoulReturnsPotWithoutPointsAndPracticeFinishesAtFifteen(){
+  Games g=game();var r=room(g);preparePot(r,"free",2);r.breaking=true;r.rackPoints[0]=7;pot(g,r);assertTrue(r.ballInHand);assertFalse(r.balls.get(2).pocketed);assertEquals(7,r.rackPoints[0]);assertEquals(-1,r.winner);assertTrue(r.potted.isEmpty());
+  Games training=game();var practice=room(training);practice.mode="practice";preparePot(practice,"free",8);practice.rackPoints[0]=14;pot(training,practice);assertEquals(15,practice.rackPoints[0]);assertEquals(0,practice.winner);practice.deadline=0;training.tick();assertEquals("FINISHED",practice.phase);
+ }
+ @Test void botsExecuteBothNewRuleSetsUsingRegularCommands(){
+  for(String rules:java.util.List.of("nine","free")){Games g=game();var r=room(g);r.mode="bot";r.seats.set(1,new Games.Seat(new Auth.User(-1,"Bot",null,null)));r.turn=1;preparePot(r,rules,rules.equals("nine")?9:8);r.botLevel="pro";r.ballInHand=true;r.balls.get(0).pocketed=true;g.botTurn(r);assertEquals("SHOT",r.phase);assertEquals(2,r.seq);assertFalse(r.shotMessage.startsWith("Фол"));assertEquals(rules.equals("nine")?9:8,r.shot.firstContact());g.closeBots();}
+ }
+
 }
