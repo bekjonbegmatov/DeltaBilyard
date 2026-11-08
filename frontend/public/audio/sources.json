@@ -1,0 +1,154 @@
+[
+  {
+    "file": "ball-contact.wav",
+    "author": "Za-Games",
+    "title": "billiard ball clack",
+    "source": "https://freesound.org/people/Za-Games/sounds/539854/",
+    "preview": "https://cdn.freesound.org/previews/539/539854_12029332-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      0,
+      0.239
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "8fba3f6faccc03d06ac6fa7f1a3e496b7dba18468364082526a9b8b52af0950d",
+    "sha256": "0096b2b492cf8b38bb72b3b70a1738015c3668cf15c426befe94fe541966056a",
+    "durationSeconds": 0.239,
+    "bytes": 15340
+  },
+  {
+    "file": "rail-contact.wav",
+    "author": "mccarthy@bedmas.com",
+    "title": "pool-ball-bounce-off-rail.wav",
+    "source": "https://freesound.org/people/mccarthy%40bedmas.com/sounds/42364/",
+    "preview": "https://cdn.freesound.org/previews/42/42364_450724-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      0.3768,
+      0.62
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "fa28e2881ac275f33df3f682da97475c2e3b7823a10e3ee16b9c22d963c097ec",
+    "sha256": "247bc2d6383e7fd7546c7ab7badb065ba5795a72b874b0ecfefd595504638fe0",
+    "durationSeconds": 0.24319,
+    "bytes": 15608
+  },
+  {
+    "file": "cue-strike.wav",
+    "author": "AmberdeMeillon",
+    "title": "Pool_Table_Ball_Hit_Sink.WAV",
+    "source": "https://freesound.org/people/AmberdeMeillon/sounds/443066/",
+    "preview": "https://cdn.freesound.org/previews/443/443066_8282799-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      3.7618,
+      4.09
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "9b326ed2655986ba7fdf931c2a826ece51955c6f911c04ca6f9080df886a9fc6",
+    "sha256": "09c8fc38b5384f2f7b015932920cb054811f0bbb30ba7e7eadcc5202b6dbf830",
+    "durationSeconds": 0.32819,
+    "bytes": 21048
+  },
+  {
+    "file": "pocket-drop.wav",
+    "author": "AmberdeMeillon",
+    "title": "Pool_Table_Ball_Hit.WAV",
+    "source": "https://freesound.org/people/AmberdeMeillon/sounds/443067/",
+    "preview": "https://cdn.freesound.org/previews/443/443067_8282799-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      5.0666,
+      5.45
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "106139699e12f482b845d7042b58136eac2e9ded85817caad3d62eeca36b9f1f",
+    "sha256": "f920f59d1999f8ede50ccf440eaffda550394cc3de2ea792132bacb9b1e4802f",
+    "durationSeconds": 0.38341,
+    "bytes": 24582
+  },
+  {
+    "file": "hand-clap.wav",
+    "author": "steeltowngaming",
+    "title": "Clap 01",
+    "source": "https://freesound.org/people/steeltowngaming/sounds/537735/",
+    "preview": "https://cdn.freesound.org/previews/537/537735_11976230-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      0.0929,
+      0.25
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "84583b6da6ff40072b7b5044221f4617283296c3fea3cefbf018fd8dd5766e30",
+    "sha256": "3b062077cbbebe5de928f1a5c410499a21dd620662f711e5d0b6ed6a33dbb1d8",
+    "durationSeconds": 0.15709,
+    "bytes": 10098
+  },
+  {
+    "file": "laughter.wav",
+    "author": "MuzakPlz",
+    "title": "Female Laughter",
+    "source": "https://freesound.org/people/MuzakPlz/sounds/625135/",
+    "preview": "https://cdn.freesound.org/previews/625/625135_12906935-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      4.49,
+      5.45
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "94e95b8efc7c5ecd84f56862294521d830faa09ba551878fda65ce7f3c4d1881",
+    "sha256": "04161b52b6a4c5e8f5c13dbcc8ad5231ab592ef4cbda8d430cbf94f2f46e6795",
+    "durationSeconds": 0.96,
+    "bytes": 61484
+  },
+  {
+    "file": "wow.wav",
+    "author": "Lunardrive",
+    "title": "WOW_SoundSmith.wav",
+    "source": "https://freesound.org/people/Lunardrive/sounds/48981/",
+    "preview": "https://cdn.freesound.org/previews/48/48981_120830-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      0.08,
+      0.92
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "4c34449cd6b75088c219f6a3caab6761f0f955feb7240df51ed26927fdc2ba1c",
+    "sha256": "620285e1f31c05ad9bac9e069adb7f83f09f25b67235e01b2f625729344f258c",
+    "durationSeconds": 0.84,
+    "bytes": 53804
+  },
+  {
+    "file": "cheer.wav",
+    "author": "jayfrosting",
+    "title": "Cheer 1 short.wav",
+    "source": "https://freesound.org/people/jayfrosting/sounds/333405/",
+    "preview": "https://cdn.freesound.org/previews/333/333405_5884138-hq.mp3",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verifiedOn": "2026-11-08",
+    "sourceExcerptSeconds": [
+      0,
+      1.95
+    ],
+    "processing": "Mono 32 kHz, 16-bit PCM; 70 Hz high-pass; peak normalized to -3 dBFS; short fade-in/out.",
+    "sourcePreviewSha256": "862ee590e529eb7a2f30feb9265a16523aa6f41a0c477929040f412dfe16d7e8",
+    "sha256": "e720eaf5e84070161afadd2a9273529a9f092c61f6dcee95eb4f8c8e57f582ed",
+    "durationSeconds": 1.95,
+    "bytes": 124844
+  }
+]
