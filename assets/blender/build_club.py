@@ -101,6 +101,15 @@ for i,(x,y) in enumerate(pockets):
     for j in range(n):faces.append((j,(j+1)%n,(j+1)%n+n,j+n))
     mesh=bpy.data.meshes.new('Pocket lining');mesh.from_pydata(verts,[],faces);mesh.update()
     o=bpy.data.objects.new('Pocket %d recessed throat'%i,mesh);scene.collection.objects.link(o);o.data.materials.append(black);table.append(o)
+# Boolean cut walls inherit timber unless explicitly lined. Keep all pocket
+# interior faces dark; otherwise wood reflections look like floating plugs.
+for obj in [body,rail,bed]:
+    if black.name not in obj.data.materials:obj.data.materials.append(black)
+    slot=list(obj.data.materials).index(black)
+    for face in obj.data.polygons:
+        center=obj.matrix_world @ face.center
+        if abs(face.normal.z)<.75 and any(math.hypot(center.x-x,center.y-y)<.135 for x,y in pockets):
+            face.material_index=slot
 # Six actual cushions, with tapered jaws toward each open pocket.
 def cushion(name,x0,x1,y,sign):
     # Nose at the physical collision line, exposed over the wood opening.
