@@ -2,7 +2,7 @@ import bpy, math, random, os
 from mathutils import Vector
 ROOT='/Users/behruz/Documents/ChatGPT/DeltaBilyard'
 random.seed(8)
-scene=bpy.data.scenes.new('DeltaBilyard Studio')
+scene=bpy.data.scenes.new('DeltaBilyard Atelier')
 bpy.context.window.scene=scene
 
 def enum(cls,prop,value):
@@ -61,53 +61,63 @@ def ring(name,x,y,z,r,minor,mat,group=table):
     for p in o.data.polygons:p.use_smooth=True
     return o
 
-body=cube('Solid walnut cabinet',(0,0,-.17),(2.98,1.72,.30),wood,.035)
-rail=cube('Walnut rail frame',(0,0,.018),(2.98,1.72,.11),wood,.018)
-opening=cube('temporary bed opening',(0,0,.10),(2.54,1.27,.30),black)
+body=cube('Solid walnut cabinet',(0,0,-.17),(2.90,1.63,.25),wood,.035)
+rail=cube('Walnut rail frame',(0,0,.025),(2.90,1.63,.085),wood,.018)
+opening=cube('temporary bed opening',(0,0,.10),(2.66,1.39,.30),black)
 cut(rail,opening);table.remove(opening);bpy.data.objects.remove(opening,do_unlink=True)
 bed=cube('Tournament cloth',(0,0,-.007),(2.54,1.27,.026),felt)
 pockets=[(-1.27,-.635),(0,-.635),(1.27,-.635),(-1.27,.635),(0,.635),(1.27,.635)]
 for i,(x,y) in enumerate(pockets):
-    r=.077 if x else .073
+    r=.071 if x else .067
     cutter=cylinder('temporary pocket cutter',(x,y,-.08),r,.70,black)
     for o in [rail,bed,body]:cut(o,cutter)
     table.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
-    cylinder('Pocket %d depth'%i,(x,y,-.27),r*.97,.012,black)
-    # Visible inner lining, hollow at the top, no painted circle over the cloth.
-    lining=cylinder('Pocket %d leather well'%i,(x,y,-.12),r*.99,.26,leather)
-    bore=cylinder('temporary well bore',(x,y,-.10),r*.90,.30,black)
-    cut(lining,bore);table.remove(bore);bpy.data.objects.remove(bore,do_unlink=True)
-    ring('Pocket %d stitched lip'%i,x,y,-.003,r*.96,.004,leather)
-    # Short brass collar behind the playing surface, does not close the pocket mouth.
-    ring('Pocket %d brass inlay'%i,x,y,.018,r+ .010,.003,brass)
+    # Open, inward-facing leather throat: no end caps or floating torus.
+    # A shallow black collector stays behind the playing plane, without parallax discs.
+    verts=[];faces=[];n=64
+    for z,rad in [(.008,r),(-.085,r*.90)]:
+        for j in range(n):
+            a=j*math.tau/n;verts.append((x+rad*math.cos(a),y+rad*math.sin(a),z))
+    for j in range(n):faces.append((j,(j+1)%n,(j+1)%n+n,j+n))
+    faces.append(tuple(range(n,2*n)))
+    mesh=bpy.data.meshes.new('Recessed pocket throat');mesh.from_pydata(verts,[],faces);mesh.update()
+    o=bpy.data.objects.new('Pocket %d recessed throat'%i,mesh);scene.collection.objects.link(o);o.data.materials.append(black);table.append(o)
 # Six actual cushions, with tapered jaws toward each open pocket.
 def cushion(name,x0,x1,y,sign):
-    pts=[(x0+.023,y-sign*.025,.009),(x1-.023,y-sign*.025,.009),(x1,y+sign*.030,.009),(x0,y+sign*.030,.009)]
-    verts=pts+[(x,y,z+.043) for x,y,z in pts]
+    # Nose at the physical collision line, exposed over the wood opening.
+    pts=[(x0,y,.009),(x1,y,.009),(x1+.026,y+sign*.06,.009),(x0-.026,y+sign*.06,.009)]
+    verts=pts+[(x0,y,.035),(x1,y,.035),(x1+.026,y+sign*.06,.055),(x0-.026,y+sign*.06,.055)]
     faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
     mesh=bpy.data.meshes.new(name);mesh.from_pydata(verts,[],faces);mesh.update();o=bpy.data.objects.new(name,mesh);scene.collection.objects.link(o);o.data.materials.append(rubber);table.append(o)
     bpy.context.view_layer.objects.active=o;o.select_set(True);mod=o.modifiers.new('Rounded cushion edge',enum(bpy.types.Modifier,'type','BEVEL'));mod.width=.005;mod.segments=3;bpy.ops.object.modifier_apply(modifier=mod.name);o.select_set(False)
 for sign in [-1,1]:
-    cushion('Long cushion left',-1.19,-.081,sign*.66,sign)
-    cushion('Long cushion right',.081,1.19,sign*.66,sign)
-    short=cube('Short cushion',(sign*1.296,0,.029),(.055,1.095,.047),rubber,.009)
-for y in [-.748,.748]:
+    cushion('Long cushion left',-1.19,-.081,sign*.635,sign)
+    cushion('Long cushion right',.081,1.19,sign*.635,sign)
+    short=cube('Short cushion',(sign*1.300,0,.029),(.060,1.110,.048),rubber,.009)
+for y in [-.755,.755]:
     for x in [-.9525,-.635,-.3175,.3175,.635,.9525]:
-        o=cube('Mother of pearl diamond',(x,y,.077),(.013,.022,.002),ivory,.001);o.rotation_euler[2]=math.pi/4
-for x in [-1.383,1.383]:
-    for y in [-.3175,0,.3175]:cube('End rail diamond',(x,y,.077),(.018,.013,.002),ivory,.001)
+        o=cube('Mother of pearl diamond',(x,y,.069),(.013,.022,.002),ivory,.001);o.rotation_euler[2]=math.pi/4
+for x in [-1.39,1.39]:
+    for y in [-.3175,0,.3175]:cube('End rail diamond',(x,y,.069),(.018,.013,.002),ivory,.001)
 for x in [-1.07,1.07]:
     for y in [-.50,.50]:
         cube('Tapered walnut leg',(x,y,-.58),(.16,.16,.64),wood,.02)
         cube('Brass levelling foot',(x,y,-.91),(.18,.18,.045),brass,.012)
-cube('Cabinet brass accent',(0,-.866,-.10),(2.78,.008,.008),brass,.002)
-cube('Cabinet brass accent',(0,.866,-.10),(2.78,.008,.008),brass,.002)
+cube('Cabinet brass accent',(0,-.818,-.10),(2.78,.008,.008),brass,.002)
+cube('Cabinet brass accent',(0,.818,-.10),(2.78,.008,.008),brass,.002)
 # Club interior with parquet, panelling, lounge seats and cue rack.
-floors=[material('Parquet '+str(i),(.075+i*.006,.035+i*.003,.018+i*.002),.55) for i in range(8)]
-for row in range(16):
-    for col in range(8):
-        x=-4+col*1.0+(row%2)*.5
-        cube('Oak parquet',(x,-3+row*.4,-.96),(.995,.395,.045),random.choice(floors),.003,room)
+floors=[material('Parquet '+str(i),(.025+i*.0015,.022+i*.001,.018+i*.0008),.78) for i in range(8)]
+for row in range(38):
+    for col in range(12):
+        x=-4+col*.72+(row%2)*.36
+        cube('Oak parquet',(x,-3+row*.17,-.96),(.718,.168,.045),random.choice(floors),.003,room)
+# Reuse the eight parquet meshes; GLB stores each plank geometry only once.
+floor_meshes={}
+for o in room:
+    if o.name.startswith('Oak parquet'):
+        key=o.data.materials[0].name
+        if key in floor_meshes:o.data=floor_meshes[key]
+        else:floor_meshes[key]=o.data
 for x in [-4.0,4.0]:cube('Side wall',(x,0,.75),(.1,6.8,3.5),wall,.0,room)
 for y in [-3.3,3.3]:cube('End wall',(0,y,.75),(8.1,.1,3.5),wall,.0,room)
 for y in [-3.23,3.23]:
@@ -143,7 +153,7 @@ def export(objects,name):
     for o in scene.objects:o.select_set(False)
     for o in objects:o.select_set(True)
     bpy.context.view_layer.objects.active=objects[0]
-    bpy.ops.export_scene.gltf(filepath=ROOT+'/frontend/public/models/'+name,export_format=next(i.identifier for i in bpy.ops.export_scene.gltf.get_rna_type().properties['export_format'].enum_items if i.identifier=='GLB'),use_selection=True,export_apply=True)
+    bpy.ops.export_scene.gltf(filepath=ROOT+'/frontend/public/models/'+name,export_format='GLB',use_selection=True,use_active_scene=True,export_apply=True)
 export(table,'club-table.glb');export(room,'club-room.glb')
 for o in scene.objects:o.select_set(False)
 bpy.context.view_layer.objects.active=body;body.select_set(True)
