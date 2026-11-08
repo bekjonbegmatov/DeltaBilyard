@@ -1,0 +1,7 @@
+services:
+  postgres:
+    image: mirror.gcr.io/library/postgres:17-alpine
+    ports: ["127.0.0.1:55432:5432"]
+  redis:
+    image: mirror.gcr.io/library/redis:7.4-alpine
+    ports: ["127.0.0.1:56379:6379"]

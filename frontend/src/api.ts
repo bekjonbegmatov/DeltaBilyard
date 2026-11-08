@@ -1,0 +1,4 @@
+let token=sessionStorage.getItem('delta-token')||'';
+export function setToken(t:string){token=t;sessionStorage.setItem('delta-token',t)}
+export async function api<T=any>(path:string,body?:unknown):Promise<T>{const r=await fetch('/api'+path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});const n=await r.json().catch(()=>({error:'Сервер временно недоступен'}));if(!r.ok)throw new Error(n.error||'Не удалось выполнить запрос');return n}
+export function setupTelegram(){const t=window.Telegram?.WebApp;if(!t)return;t.ready();t.expand();t.setHeaderColor?.('#101916');t.setBackgroundColor?.('#101916');if(t.isVersionAtLeast?.('8.0')){t.requestFullscreen?.();t.disableVerticalSwipes?.();}const i=t.contentSafeAreaInset;if(i)for(const k of ['top','bottom','left','right'] as const)document.documentElement.style.setProperty('--tg-'+k,i[k]+'px')}

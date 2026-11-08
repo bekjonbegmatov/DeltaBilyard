@@ -1,0 +1,34 @@
+server:
+  port: 8080
+  shutdown: graceful
+  forward-headers-strategy: framework
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/bilyard}
+    username: ${POSTGRES_USER:bilyard}
+    password: ${POSTGRES_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      password: ${REDIS_PASSWORD}
+  jackson:
+    default-property-inclusion: non_null
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+app:
+  bot-token: ${BOT_TOKEN:}
+  bot-name: ${BOT_NAME:mikelanjelo_robot}
+  base-url: ${BASE_URL:https://bilyard.deltavpn.me}
+  session-secret: ${SESSION_SECRET}
+  dev-auth: ${DEV_AUTH:false}
+  livekit-url: ${LIVEKIT_URL:}
+  livekit-key: ${LIVEKIT_API_KEY:}
+  livekit-secret: ${LIVEKIT_API_SECRET:}
+  admin-key: ${ADMIN_KEY}

@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+target/
+*.tsbuildinfo
+.DS_Store
+backups/
+infra/livekit.generated.yaml
+*.pem
+*.key
+*.log
+infra/tls/

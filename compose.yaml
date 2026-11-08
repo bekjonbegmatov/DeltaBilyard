@@ -1,0 +1,65 @@
+name: deltabilyard
+services:
+  web:
+    build: ./frontend
+    ports: ["127.0.0.1:7584:80"]
+    depends_on:
+      backend: {condition: service_healthy}
+      livekit: {condition: service_started}
+    restart: unless-stopped
+    mem_limit: 128m
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/bilyard
+      REDIS_HOST: redis
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+    mem_limit: 1800m
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080; printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3; cat <&3 | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: bilyard
+      POSTGRES_USER: ${POSTGRES_USER:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes: ["postgres:/var/lib/postgresql/data"]
+    restart: unless-stopped
+    mem_limit: 900m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d bilyard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?required}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 128mb --maxmemory-policy noeviction"]
+    volumes: ["redis:/data"]
+    restart: unless-stopped
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  livekit:
+    image: livekit/livekit-server:v1.9.3
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes: ["./infra/livekit.generated.yaml:/etc/livekit.yaml:ro", "./infra/tls:/etc/livekit-tls:ro"]
+    ports: ["127.0.0.1:7880:7880", "7881:7881", "7882:7882/udp", "3478:3478/udp", "5349:5349"]
+    restart: unless-stopped
+    mem_limit: 700m
+volumes:
+  postgres:
+  redis:

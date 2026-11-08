@@ -1,0 +1,4 @@
+let ctx:AudioContext|undefined;
+export const sound={collision:.5,rail:.4,pocket:.7};
+export function unlockAudio(){ctx??=new AudioContext();void ctx.resume()}
+export function playSound(type:string,strength:number){if(!ctx||ctx.state!=='running')return;const gain=ctx.createGain(),osc=ctx.createOscillator();const level=type==='pocket'?sound.pocket:type==='rail'?sound.rail:sound.collision;gain.gain.setValueAtTime(Math.min(.3,Math.max(.025,strength*.04))*level,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.12);osc.type=type==='pocket'?'sine':'triangle';osc.frequency.setValueAtTime(type==='pocket'?180:type==='rail'?280:1400,ctx.currentTime);osc.frequency.exponentialRampToValueAtTime(80,ctx.currentTime+.1);osc.connect(gain).connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.13)}

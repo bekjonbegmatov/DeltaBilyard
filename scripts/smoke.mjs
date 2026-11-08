@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {request,player,connect,until} from './test-client.mjs';
+const seed=Date.now()%100000000;const a=await player(seed),b=await player(seed+1),outsider=await player(seed+2);
+const r=await request('/rooms',{mode:'duel',seconds:45,target:1,hints:true},a.token);await request('/rooms/'+r.code+'/join',{},b.token);
+await assert.rejects(()=>request('/rooms/'+r.code,undefined,outsider.token));
+const ca=await connect(a,r.code),cb=await connect(b,r.code);await ca.command('ready');await until(()=>cb.room.seq===ca.room.seq);await cb.command('ready');await until(()=>ca.room.phase==='AIM');
+const shot=await ca.command('shoot',{angle:0,power:.85,spinX:0,spinY:0,pocket:-1});assert.equal(ca.room.phase,'SHOT');await until(()=>cb.room.seq===ca.room.seq);assert.deepEqual(ca.room.balls,cb.room.balls);
+const seq=ca.room.seq;ca.socket.send(JSON.stringify({action:'shoot',...shot,angle:0,power:.85}));await new Promise(r=>setTimeout(r,100));assert.equal(ca.room.seq,seq);assert(!ca.inbox.some(n=>n.type==='error'));
+ca.socket.close();await new Promise(r=>setTimeout(r,100));const resumed=await connect(a,r.code);assert.equal(resumed.room.code,r.code);assert.equal(Object.keys(resumed.room.disconnected).length,0);
+await request('/friends/'+b.id+'/request',{},a.token);await request('/friends/'+a.id+'/accept',{},b.token);assert((await request('/friends',undefined,a.token)).some(f=>f.status==='accepted'));
+await request('/friends/'+b.id+'/block',{},a.token);await assert.rejects(()=>request('/friends/'+a.id+'/request',{},b.token));
+await resumed.command('leave');await until(()=>cb.room.phase==='FINISHED');assert((await request('/history',undefined,a.token)).length>0);
+resumed.socket.close();cb.socket.close();console.log('PASS: auth, room access, 2 clients, ready, shot synchronization, idempotency, reconnect, friendship, block, forfeit, history');
