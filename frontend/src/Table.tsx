@@ -10,6 +10,7 @@ import {W,H,R,pockets} from './tableGeometry';
 import {replayAt} from './replay';
 import {aimGuide} from './aimGuide';
 import {haptic} from './haptics';
+import {legalTargetIds} from './gameRules';
 export {pockets} from './tableGeometry';
 const colors=['#fff9e7','#eac129','#2775b5','#d3413a','#8b55ad','#ec8735','#248a63','#8f293a','#181c20','#eac129','#2775b5','#d3413a','#8b55ad','#ec8735','#248a63','#8f293a'];
 export function rack():Ball[]{const b:Ball[]=[{id:0,x:W*.25,y:H/2,pocketed:false}];let k=0;const ids=[1,9,2,10,8,3,4,11,5,12,6,13,7,14,15];for(let r=0;r<5;r++)for(let c=0;c<=r;c++)b.push({id:ids[k++],x:W*.72+r*R*Math.sqrt(3)*1.005,y:H/2+(2*c-r)*R*1.005,pocketed:false});return b.sort((a,b)=>a.id-b.id)}
@@ -27,7 +28,7 @@ function Scene(p:Props){const balls=useMemo(()=>rack(),[]),meshes=useRef<(THREE.
    const fs=shot.frames;let lo=0,hi=fs.length-1;while(lo+1<hi){const mid=(lo+hi)>>1;if(fs[mid].t<=t)lo=mid;else hi=mid}const a=fs[lo],b=fs[Math.min(lo+1,fs.length-1)],f=Math.max(0,Math.min(1,(t-a.t)/(b.t-a.t||1)));positions=a.balls.map((v,j)=>[THREE.MathUtils.lerp(v[0],b.balls[j][0],f),THREE.MathUtils.lerp(v[1],b.balls[j][1],f),f<1?v[2]:b.balls[j][2]]);
    if(lastShot.current!==room.shotAt){lastShot.current=room.shotAt;lastT.current=-1}if(!replay&&elapsed<=shot.duration)for(const e of shot.events)if(e.t>lastT.current&&e.t<=t&&e.t>=t-.12){playSound(e.type,e.strength);if(e.type==='collision'||e.type==='rail')haptic(e.type,e.strength);if(e.type==='pocket'&&e.ball!==0)haptic('pot');}if(!replay)lastT.current=t;if(elapsed>=shot.duration&&!clip)positions=room.balls.map(b=>[b.x,b.y,b.pocketed?1:0]);
   }
-  for(let i=0;i<16;i++){const m=meshes.current[i];if(!m)continue;const b=positions[i];m.visible=b[2]===0;const nx=b[0]-W/2,nz=b[1]-H/2;const dx=nx-m.position.x,dz=nz-m.position.z;m.rotation.x+=dz/R;m.rotation.z-=dx/R;m.position.set(nx,R+.006,nz);const shadow=shadows.current[i];if(shadow){shadow.visible=m.visible;shadow.position.set(nx+.004,.0068,nz+.006)}}
+  for(let i=0;i<16;i++){const m=meshes.current[i];if(!m)continue;const b=positions[i],shadow=shadows.current[i];m.visible=!!b&&b[2]===0;if(shadow)shadow.visible=m.visible;if(!b)continue;const nx=b[0]-W/2,nz=b[1]-H/2;const dx=nx-m.position.x,dz=nz-m.position.z;m.rotation.x+=dz/R;m.rotation.z-=dx/R;m.position.set(nx,R+.006,nz);if(shadow)shadow.position.set(nx+.004,.0068,nz+.006)}
   if(cue.current){const b=positions[0];cue.current.visible=!!room&&room.phase==='AIM'&&!room.ballInHand;cue.current.position.set(b[0]-W/2,R+.009,b[1]-H/2);cue.current.rotation.y=-(p.angle||0);const backX=-Math.cos(p.angle||0),backY=-Math.sin(p.angle||0);const edgeX=Math.abs(backX)<1e-6?Infinity:((backX>0?W:0)-b[0])/backX;const edgeY=Math.abs(backY)<1e-6?Infinity:((backY>0?H:0)-b[1])/backY;cue.current.rotation.z=-Math.max(.045,Math.min(1.10,Math.atan2(.075,Math.min(edgeX,edgeY)+.02)));}
   if(camera.current){const aspect=size.width/size.height;const distance=Math.max(1.69,2.96/aspect)/(2*Math.tan(42*Math.PI/360));let target=new THREE.Vector3(0,distance,distance*.035);let aimAt=new THREE.Vector3(0,0,0);let fov=42;
    if(p.hero){target=new THREE.Vector3(.2,2.45,1.45);fov=aspect>2?29:40;}
@@ -42,7 +43,7 @@ function Scene(p:Props){const balls=useMemo(()=>rack(),[]),meshes=useRef<(THREE.
  return <><StudioEnvironment/><PerformanceMonitor onDecline={()=>setLow(true)}/><PerspectiveCamera ref={camera} makeDefault position={[0,2.7,.35]} fov={42} near={.015} far={24}/><ambientLight intensity={.15}/><hemisphereLight args={['#dce6e4','#211c17',.42]}/><directionalLight position={[-.5,3.8,-.2]} intensity={1.25} color="#fff4dc" castShadow shadow-mapSize={[low?512:2048,low?512:2048]} shadow-camera-left={-1.7} shadow-camera-right={1.7} shadow-camera-top={1.15} shadow-camera-bottom={-1.15} shadow-camera-near={.1} shadow-camera-far={8} shadow-bias={-.00008} shadow-normalBias={.001} shadow-radius={3}/><spotLight position={[0,2.3,0]} intensity={8} angle={.8} penumbra={.65} color="#fff4df" distance={6}/><pointLight position={[-2,1.4,-2]} intensity={3.0} color="#dfb77f" distance={5}/><pointLight position={[2,1.3,2.2]} intensity={2} color={p.venue==='loft'?'#8baecd':'#d0b089'} distance={5}/>
  <ClubModel cloth={p.cloth} venue={p.venue} hero={p.hero}/>
  <mesh position={[0,.009,0]} rotation={[-Math.PI/2,0,0]} onPointerDown={pointer} onPointerMove={e=>{if(e.buttons)pointer(e)}}><planeGeometry args={[W,H]}/><meshBasicMaterial transparent opacity={0} depthWrite={false}/></mesh>
- {pockets.map(([x,y],i)=><mesh key={i} position={[x-W/2,.011,y-H/2]} rotation={[-Math.PI/2,0,0]} onClick={e=>{e.stopPropagation();p.onPocket?.(i)}}><ringGeometry args={[.073,.083,40]}/><meshBasicMaterial color="#f0c66b" transparent opacity={p.called===i?.9:0} depthWrite={false}/></mesh>)}
+ {pockets.map(([x,y],i)=><mesh key={i} position={[x-W/2,.011,y-H/2]} rotation={[-Math.PI/2,0,0]} onClick={p.onPocket?e=>{e.stopPropagation();p.onPocket?.(i)}:undefined}><ringGeometry args={[.058,.068,40]}/><meshBasicMaterial color="#f0c66b" transparent opacity={p.called===i?.95:0} depthWrite={false}/></mesh>)}
  {balls.map(ball=><mesh key={'shadow-'+ball.id} ref={m=>{shadows.current[ball.id]=m}} position={[ball.x-W/2,.0068,ball.y-H/2]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[R*3.4,R*3.4]}/><meshBasicMaterial map={shadowMap} transparent depthWrite={false} toneMapped={false}/></mesh>)}
  {balls.map(ball=><mesh key={ball.id} ref={m=>{meshes.current[ball.id]=m}} position={[ball.x-W/2,R+.006,ball.y-H/2]} castShadow><sphereGeometry args={[R,low?16:32,low?12:24]}/><meshPhysicalMaterial map={textures[ball.id]} roughness={.21} metalness={0} clearcoat={.55} clearcoatRoughness={.16} envMapIntensity={.65}/></mesh>)}
  <group ref={cue}><group position={[-.038-(p.power||.3)*.09,0,0]}>
@@ -53,13 +54,14 @@ function Scene(p:Props){const balls=useMemo(()=>rack(),[]),meshes=useRef<(THREE.
  <mesh renderOrder={20} position={[-1.30,0,0]} rotation={[0,0,-Math.PI/2]}><cylinderGeometry args={[.014,.015,.24,20]}/><meshStandardMaterial depthTest={false} depthWrite={false} color="#202722" roughness={.7}/></mesh>
  <mesh renderOrder={20} position={[-1.435,0,0]} rotation={[0,0,-Math.PI/2]}><cylinderGeometry args={[.015,.015,.03,20]}/><meshStandardMaterial depthTest={false} depthWrite={false} color="#171b19" roughness={.75}/></mesh>
  </group></group>
- {p.mine&&p.room?.hints&&p.room.phase==='AIM'&&!p.room.ballInHand&&mode!=='free'&&<AimHints balls={p.room.balls} angle={a}/>}
+ {p.mine&&p.room?.hints&&p.room.phase==='AIM'&&!p.room.ballInHand&&mode!=='free'&&<AimHints room={p.room} angle={a}/>}
  {mode==='free'&&!p.hero&&<OrbitControls makeDefault enableDamping dampingFactor={.08} minDistance={.5} maxDistance={5} minPolarAngle={.08} maxPolarAngle={Math.PI*.47} target={[0,-.05,0]} enablePan={false} touches={{ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN}}/>}
  </>;
 }
-function AimHints({balls,angle}:{balls:Ball[];angle:number}){
- const guide=useMemo(()=>aimGuide(balls,angle),[balls,angle]);
+function AimHints({room,angle}:{room:Room;angle:number}){
+ const guide=useMemo(()=>aimGuide(room.balls,angle),[room.balls,angle]);
+ const wrong=guide.ball!==undefined&&!legalTargetIds(room,room.turn%2).includes(guide.ball);
  const points=(v:number[][])=>v.map(p=>[p[0]-W/2,R+.007,p[1]-H/2] as [number,number,number]);
- return <>{guide.path.length>1&&<Line points={points(guide.path)} color="#e2ddbf" lineWidth={1.2} dashed dashSize={.018} gapSize={.012}/>}{guide.ghost&&<mesh position={[guide.ghost[0]-W/2,R+.006,guide.ghost[1]-H/2]}><sphereGeometry args={[R,24,16]}/><meshBasicMaterial color="#fff9df" transparent opacity={.18} depthWrite={false}/></mesh>}{guide.objectPath&&<Line points={points(guide.objectPath)} color="#e7c77d" lineWidth={1.6}/>} {guide.cuePath&&<Line points={points(guide.cuePath)} color="#afcdd6" lineWidth={1} dashed dashSize={.012} gapSize={.015}/>}</>
+ return <>{guide.path.length>1&&<Line points={points(guide.path)} color={wrong?'#f58272':'#e2ddbf'} lineWidth={1.2} dashed dashSize={.018} gapSize={.012}/>}{guide.ghost&&<mesh position={[guide.ghost[0]-W/2,R+.006,guide.ghost[1]-H/2]}><sphereGeometry args={[R,24,16]}/><meshBasicMaterial color={wrong?'#f58272':'#fff9df'} transparent opacity={wrong?.4:.18} depthWrite={false}/></mesh>}{guide.objectPath&&<Line points={points(guide.objectPath)} color={wrong?'#f58272':'#e7c77d'} lineWidth={1.6}/>} {guide.cuePath&&<Line points={points(guide.cuePath)} color="#afcdd6" lineWidth={1} dashed dashSize={.012} gapSize={.015}/>}</>
 }
 export default function Table(p:Props){return <Canvas resize={{scroll:false,debounce:{scroll:0,resize:0}}} shadows dpr={[1,1.75]} gl={{antialias:true,alpha:true,powerPreference:'high-performance',toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:.95}}><Suspense fallback={<Html center><div className="scene-loading">Готовим ваш стол…</div></Html>}><Scene {...p}/></Suspense></Canvas>}
