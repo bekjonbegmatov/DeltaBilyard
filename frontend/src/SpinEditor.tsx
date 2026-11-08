@@ -1,0 +1,8 @@
+import {useState,type PointerEvent} from 'react';
+import {haptic} from './haptics';
+export type Spin={x:number;y:number};
+export default function SpinEditor({value,onApply}:{value:Spin;onApply:(value:Spin)=>void}){
+ const [spin,setSpin]=useState(value);
+ function set(e:PointerEvent<HTMLDivElement>){if(e.type==='pointerdown')e.currentTarget.setPointerCapture(e.pointerId);const r=e.currentTarget.getBoundingClientRect();let x=(e.clientX-r.left-r.width/2)/(r.width*.46),y=-(e.clientY-r.top-r.height/2)/(r.height*.46);const d=Math.hypot(x,y);if(d>1){x/=d;y/=d}setSpin({x,y});haptic('tick')}
+ return <><div className="eyebrow gold">ВРАЩЕНИЕ БИТКА</div><h2>Точка удара</h2><div className="spin-editor"><span className="spin-top">Накат</span><span className="spin-left">Левый винт</span><div className="cue-ball spin-large" role="application" aria-label="Выбор точки удара на битке" tabIndex={0} onPointerDown={set} onPointerMove={e=>{if(e.buttons)set(e)}} onKeyDown={e=>{const map:Record<string,Spin>={ArrowLeft:{x:-.05,y:0},ArrowRight:{x:.05,y:0},ArrowUp:{x:0,y:.05},ArrowDown:{x:0,y:-.05}};if(map[e.key]){e.preventDefault();let x=spin.x+map[e.key].x,y=spin.y+map[e.key].y,d=Math.hypot(x,y);if(d>1){x/=d;y/=d}setSpin({x,y});haptic('tick')}}}><i style={{left:(50+spin.x*43)+'%',top:(50-spin.y*43)+'%'}}/></div><span className="spin-right">Правый винт</span><span className="spin-bottom">Оттяжка</span></div><div className="spin-actions"><button onClick={()=>{setSpin({x:0,y:0});haptic()}}>В центр</button><button className="primary" onClick={()=>{haptic('success');onApply(spin)}}>Применить</button></div></>
+}

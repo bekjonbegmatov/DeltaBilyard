@@ -10,4 +10,7 @@ class PhysicsTest {
  @Test void bankReflects(){var balls=Physics.rack();for(var b:balls)if(b.id!=0)b.pocketed=true;var s=Physics.simulate(balls,-Math.PI/2,.25,0,0);assertTrue(s.events().stream().anyMatch(e->e.type().equals("rail")));}
  @Test void rejectsNonFiniteAndExcessPower(){assertThrows(IllegalArgumentException.class,()->Physics.simulate(Physics.rack(),Double.NaN,.5,0,0));assertThrows(IllegalArgumentException.class,()->Physics.simulate(Physics.rack(),0,1.1,0,0));assertThrows(IllegalArgumentException.class,()->Physics.simulate(Physics.rack(),0,.5,1,1));}
  @Test void cannotPlaceOutsideBedOrOverBall(){var b=Physics.rack();assertFalse(Physics.canPlace(b,0,0));assertFalse(Physics.canPlace(b,b.get(1).x,b.get(1).y));assertTrue(Physics.canPlace(b,.5,.5));}
+ @Test void pocketCentresAreBehindCushionNoses(){assertTrue(Physics.POCKETS[0][0]<0);assertTrue(Physics.POCKETS[1][1]<0);assertTrue(Physics.POCKETS[5][0]>Physics.W);}
+ @Test void sidePocketCapturesThroughOpenMouth(){var b=Physics.rack();for(var x:b)x.pocketed=x.id!=0;b.get(0).x=Physics.W/2;b.get(0).y=.25;var shot=Physics.simulate(b,-Math.PI/2,.2,0,0);assertTrue(shot.balls().get(0).pocketed);assertTrue(shot.events().stream().anyMatch(e->e.type().equals("pocket")&&e.pocket()==1));}
+ @Test void missesOutsidePocketMouthMeetCushion(){var b=Physics.rack();for(var x:b)x.pocketed=x.id!=0;b.get(0).x=Physics.W/2+.17;b.get(0).y=.25;var shot=Physics.simulate(b,-Math.PI/2,.13,0,0);assertFalse(shot.balls().get(0).pocketed);assertTrue(shot.events().stream().anyMatch(e->e.type().equals("rail")));}
 }

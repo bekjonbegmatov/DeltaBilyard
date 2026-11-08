@@ -40,7 +40,7 @@ function optimized(source:THREE.Object3D,cloth:string,venue:string,room:boolean,
  const group=new THREE.Group();for(const {geometries,material,name} of groups.values()){const combined=mergeGeometries(geometries);if(!combined)continue;const mesh=new THREE.Mesh(combined,material);mesh.name=name;mesh.castShadow=!room;mesh.receiveShadow=true;group.add(mesh);geometries.forEach(g=>g.dispose())}return group;
 }
 export default function ClubModel({cloth='green',venue='club',hero=false}:{cloth?:string;venue?:string;hero?:boolean}){
- const table=useGLTF('/models/club-table.glb?v=20261108-at2'),club=useGLTF('/models/club-room.glb?v=20261108-at2');
+ const table=useGLTF('/models/club-table.glb?v=20261108-play3'),club=useGLTF('/models/club-room.glb?v=20261108-play3');
  const textures=useMemo(surfaceTextures,[]);
  const t=useMemo(()=>optimized(table.scene,cloth,venue,false,textures),[table.scene,cloth,venue,textures]);
  const r=useMemo(()=>optimized(club.scene,cloth,venue,true,textures),[club.scene,cloth,venue,textures]);
@@ -48,4 +48,4 @@ export default function ClubModel({cloth='green',venue='club',hero=false}:{cloth
  useEffect(()=>()=>Object.values(textures).forEach(t=>t.dispose()),[textures]);
  return <><primitive object={t}/>{!hero&&<primitive object={r}/>}</>
 }
-useGLTF.preload('/models/club-table.glb?v=20261108-at2');
+useGLTF.preload('/models/club-table.glb?v=20261108-play3');

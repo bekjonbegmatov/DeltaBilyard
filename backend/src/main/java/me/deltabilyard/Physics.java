@@ -4,8 +4,21 @@ import java.util.*;
 /** SI units; playable bed 2.54 x 1.27 m. Deterministic fixed-step simulation. */
 public final class Physics {
   public static final double W=2.54,H=1.27,R=.028575,DT=1.0/240;
-  public static final double[][] CUSHIONS={{.08,0,W/2-.08,0},{W/2+.08,0,W-.08,0},{.08,H,W/2-.08,H},{W/2+.08,H,W-.08,H},{0,.08,0,H-.08},{W,.08,W,H-.08}};
-  public static final double[][] POCKETS={{0,0},{W/2,0},{W,0},{0,H},{W/2,H},{W,H}};
+  public static final double[][] POCKETS={{-.04,-.04},{W/2,-.045},{W+.04,-.04},{-.04,H+.04},{W/2,H+.045},{W+.04,H+.04}};
+  public static final double[][] CUSHIONS=makeCushions();
+  private static double[][] makeCushions(){
+    List<double[]> v=new ArrayList<>();
+    for(double y:new double[]{0,H}){double sign=y==0?-1:1;
+      v.add(new double[]{.078,y,W/2-.068,y});v.add(new double[]{W/2+.068,y,W-.078,y});
+      v.add(new double[]{W/2-.068,y,W/2-.053,y+sign*.10});v.add(new double[]{W/2+.068,y,W/2+.053,y+sign*.10});
+    }
+    for(double x:new double[]{0,W})v.add(new double[]{x,.078,x,H-.078});
+    for(double x:new double[]{0,W})for(double y:new double[]{0,H}){double sx=x==0?-1:1,sy=y==0?-1:1;
+      v.add(new double[]{x-sx*.078,y,x-sx*.005,y+sy*.077});
+      v.add(new double[]{x,y-sy*.078,x+sx*.077,y-sy*.005});
+    }
+    return v.toArray(double[][]::new);
+  }
   public static class Ball {
     public int id; public double x,y,vx,vy,sx,sy; public boolean pocketed;
     public Ball() {} public Ball(int id,double x,double y){this.id=id;this.x=x;this.y=y;}
@@ -34,16 +47,16 @@ public final class Physics {
           a.x+=a.vx*DT;a.y+=a.vy*DT;
           double factor=Math.max(0,(speed-.23*DT)/speed);a.vx*=factor;a.vy*=factor;
         }else{a.vx=0;a.vy=0;}
-        for(int p=0;p<6;p++){double[] pt=POCKETS[p];double radius=(p==1||p==4)?.061:.067;
-          if(Math.hypot(a.x-pt[0],a.y-pt[1])<radius){a.pocketed=true;a.vx=a.vy=0;events.add(new Event(t,"pocket",a.id,-1,p,speed));break;}}
+        for(int p=0;p<6;p++){double[] pt=POCKETS[p];double radius=(p==1||p==4)?.044:.045;
+          if((a.x-pt[0])*(a.x-pt[0])+(a.y-pt[1])*(a.y-pt[1])<radius*radius){a.pocketed=true;a.vx=a.vy=0;events.add(new Event(t,"pocket",a.id,-1,p,speed));break;}}
         if(a.pocketed)continue;
         boolean hit=false;
-        for(double[] segment:CUSHIONS){double ex=segment[2]-segment[0],ey=segment[3]-segment[1];double u=Math.max(0,Math.min(1,((a.x-segment[0])*ex+(a.y-segment[1])*ey)/(ex*ex+ey*ey)));double px=segment[0]+u*ex,py=segment[1]+u*ey;double dx=a.x-px,dy=a.y-py,d=Math.hypot(dx,dy);if(d<R&&d>1e-9){double nx=dx/d,ny=dy/d,vn=a.vx*nx+a.vy*ny;if(vn<0){a.vx-=1.82*vn*nx;a.vy-=1.82*vn*ny;a.vx+=-ny*a.sx*.13;a.vy+=nx*a.sx*.13;hit=true;}a.x=px+nx*R;a.y=py+ny*R;}}
+        for(double[] segment:CUSHIONS){double ex=segment[2]-segment[0],ey=segment[3]-segment[1];double u=Math.max(0,Math.min(1,((a.x-segment[0])*ex+(a.y-segment[1])*ey)/(ex*ex+ey*ey)));double px=segment[0]+u*ex,py=segment[1]+u*ey;double dx=a.x-px,dy=a.y-py,d2=dx*dx+dy*dy;if(d2<R*R&&d2>1e-18){double d=Math.sqrt(d2),nx=dx/d,ny=dy/d,vn=a.vx*nx+a.vy*ny;if(vn<0){a.vx-=1.82*vn*nx;a.vy-=1.82*vn*ny;a.vx+=-ny*a.sx*.13;a.vy+=nx*a.sx*.13;hit=true;}a.x=px+nx*R;a.y=py+ny*R;}}
         if(hit){if(contact>=0)rail=true;events.add(new Event(t,"rail",a.id,-1,-1,speed));a.sx*=.6;}
       }
       for(int i=0;i<b.size();i++)for(int j=i+1;j<b.size();j++){
-        Ball a=b.get(i),c=b.get(j);if(a.pocketed||c.pocketed)continue;double dx=c.x-a.x,dy=c.y-a.y,d=Math.hypot(dx,dy);
-        if(d>=2*R||d<1e-9)continue;double nx=dx/d,ny=dy/d,overlap=2*R-d;
+        Ball a=b.get(i),c=b.get(j);if(a.pocketed||c.pocketed)continue;double dx=c.x-a.x,dy=c.y-a.y,d2=dx*dx+dy*dy;
+        if(d2>=4*R*R||d2<1e-18)continue;double d=Math.sqrt(d2);double nx=dx/d,ny=dy/d,overlap=2*R-d;
         a.x-=nx*overlap/2;a.y-=ny*overlap/2;c.x+=nx*overlap/2;c.y+=ny*overlap/2;
         double v=(a.vx-c.vx)*nx+(a.vy-c.vy)*ny;if(v<=0)continue;
         if(contact<0&&(a.id==0||c.id==0))contact=a.id==0?c.id:a.id;

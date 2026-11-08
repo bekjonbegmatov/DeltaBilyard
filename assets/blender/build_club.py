@@ -66,34 +66,54 @@ rail=cube('Walnut rail frame',(0,0,.025),(2.90,1.63,.085),wood,.018)
 opening=cube('temporary bed opening',(0,0,.10),(2.66,1.39,.30),black)
 cut(rail,opening);table.remove(opening);bpy.data.objects.remove(opening,do_unlink=True)
 bed=cube('Tournament cloth',(0,0,-.007),(2.54,1.27,.026),felt)
-pockets=[(-1.27,-.635),(0,-.635),(1.27,-.635),(-1.27,.635),(0,.635),(1.27,.635)]
+# Pocket throats sit BEHIND the nose lines, with open tapered mouths.
+# Playable surface is 2.54 x 1.27; balls are 57.15 mm in diameter.
+pockets=[(-1.310,-.675),(0,-.680),(1.310,-.675),(-1.310,.675),(0,.680),(1.310,.675)]
+def prism(name,points,z0,z1,mat):
+    n=len(points);verts=[(x,y,z) for z in (z0,z1) for x,y in points]
+    faces=[tuple(reversed(range(n))),tuple(range(n,2*n))]+[(j,(j+1)%n,(j+1)%n+n,j+n) for j in range(n)]
+    mesh=bpy.data.meshes.new(name);mesh.from_pydata(verts,[],faces);mesh.update()
+    o=bpy.data.objects.new(name,mesh);scene.collection.objects.link(o);o.data.materials.append(mat);table.append(o);return o
 for i,(x,y) in enumerate(pockets):
-    r=.071 if x else .067
-    cutter=cylinder('temporary pocket cutter',(x,y,-.08),r,.70,black)
+    sx=1 if x>0 else -1;sy=1 if y>0 else -1
+    radius=.061 if x else .064
+    cutter=cylinder('temporary pocket cutter',(x,y,-.08),radius,.70,black)
     for o in [rail,bed,body]:cut(o,cutter)
     table.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
-    # Open, inward-facing leather throat: no end caps or floating torus.
-    # A shallow black collector stays behind the playing plane, without parallax discs.
-    verts=[];faces=[];n=64
-    for z,rad in [(.008,r),(-.085,r*.90)]:
+    if x:
+        pts=[(sx*1.192,sy*.634),(sx*1.269,sy*.557),(sx*1.364,sy*.652),(sx*1.287,sy*.729)]
+    else:
+        pts=[(-.068,sy*.634),(.068,sy*.634),(.053,sy*.735),(-.053,sy*.735)]
+    # Sort around centroid to maintain a convex, correctly wound cutter.
+    cx=sum(p[0] for p in pts)/4;cy=sum(p[1] for p in pts)/4
+    pts.sort(key=lambda p:math.atan2(p[1]-cy,p[0]-cx))
+    cutter=prism('temporary pocket mouth',pts,-.40,.30,black)
+    for o in [rail,bed,body]:cut(o,cutter)
+    table.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
+    # Dark shelf follows the funnel, below the cloth. No cylinders above the bed.
+    prism('Pocket %d mouth shadow'%i,pts,-.035,-.030,black)
+    cylinder('Pocket %d bottom'%i,(x,y,-.10),radius,.008,black)
+    # Inner leather bore stops at felt height, never floats above playing surface.
+    verts=[];faces=[];n=48
+    for z in [.005,-.10]:
         for j in range(n):
-            a=j*math.tau/n;verts.append((x+rad*math.cos(a),y+rad*math.sin(a),z))
+            a=j*math.tau/n;verts.append((x+radius*math.cos(a),y+radius*math.sin(a),z))
     for j in range(n):faces.append((j,(j+1)%n,(j+1)%n+n,j+n))
-    faces.append(tuple(range(n,2*n)))
-    mesh=bpy.data.meshes.new('Recessed pocket throat');mesh.from_pydata(verts,[],faces);mesh.update()
+    mesh=bpy.data.meshes.new('Pocket lining');mesh.from_pydata(verts,[],faces);mesh.update()
     o=bpy.data.objects.new('Pocket %d recessed throat'%i,mesh);scene.collection.objects.link(o);o.data.materials.append(black);table.append(o)
 # Six actual cushions, with tapered jaws toward each open pocket.
 def cushion(name,x0,x1,y,sign):
     # Nose at the physical collision line, exposed over the wood opening.
-    pts=[(x0,y,.009),(x1,y,.009),(x1+.026,y+sign*.06,.009),(x0-.026,y+sign*.06,.009)]
-    verts=pts+[(x0,y,.035),(x1,y,.035),(x1+.026,y+sign*.06,.055),(x0-.026,y+sign*.06,.055)]
+    pts=[(x0,y,.009),(x1,y,.009),(x1-.015,y+sign*.06,.009),(x0+.015,y+sign*.06,.009)]
+    verts=pts+[(x0,y,.035),(x1,y,.035),(x1-.015,y+sign*.06,.055),(x0+.015,y+sign*.06,.055)]
     faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
     mesh=bpy.data.meshes.new(name);mesh.from_pydata(verts,[],faces);mesh.update();o=bpy.data.objects.new(name,mesh);scene.collection.objects.link(o);o.data.materials.append(rubber);table.append(o)
     bpy.context.view_layer.objects.active=o;o.select_set(True);mod=o.modifiers.new('Rounded cushion edge',enum(bpy.types.Modifier,'type','BEVEL'));mod.width=.005;mod.segments=3;bpy.ops.object.modifier_apply(modifier=mod.name);o.select_set(False)
 for sign in [-1,1]:
-    cushion('Long cushion left',-1.19,-.081,sign*.635,sign)
-    cushion('Long cushion right',.081,1.19,sign*.635,sign)
-    short=cube('Short cushion',(sign*1.300,0,.029),(.060,1.110,.048),rubber,.009)
+    cushion('Long cushion left',-1.192,-.068,sign*.635,sign)
+    cushion('Long cushion right',.068,1.192,sign*.635,sign)
+    cushion('End cushion',-.557,.557,sign*1.27,sign)
+    short=table[-1];short.rotation_euler[2]=-math.pi/2
 for y in [-.755,.755]:
     for x in [-.9525,-.635,-.3175,.3175,.635,.9525]:
         o=cube('Mother of pearl diamond',(x,y,.069),(.013,.022,.002),ivory,.001);o.rotation_euler[2]=math.pi/4
