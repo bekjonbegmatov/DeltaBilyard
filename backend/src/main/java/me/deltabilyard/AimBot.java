@@ -26,7 +26,7 @@ final class AimBot {
     double cosine=(cx*dx+cy*dy)/(approach*length);
     if(cosine<.35||!clear(balls,cue.x,cue.y,gx,gy,0,ball.id)||!clear(balls,ball.x,ball.y,p[0],p[1],0,ball.id))continue;
     double distance=approach+length/(cosine*cosine);
-    double power=Math.max(.16,Math.min(.8,Math.sqrt(.46*distance+.25)/6));
+    double power=Math.max(Physics.powerForSpeed(.7),Math.min(.8,Physics.powerForSpeed(Math.sqrt(.46*distance+.25))));
     double score=approach*.6+length+(1-cosine)*2;
     // Professional prefers less cut and controlled pace; medium varies among viable pots.
     if(level.equals("medium"))score+=random.nextDouble()*.65;

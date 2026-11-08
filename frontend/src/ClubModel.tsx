@@ -52,7 +52,7 @@ function optimized(source:THREE.Object3D,cloth:string,venue:string,room:boolean,
  }return group;
 }
 export default function ClubModel({cloth='green',venue='club',hero=false}:{cloth?:string;venue?:string;hero?:boolean}){
- const table=useGLTF('/models/club-table.glb?v=20261108-play4'),club=useGLTF('/models/club-room.glb?v=20261108-play4');
+ const table=useGLTF('/models/club-table.glb?v=20261108-play6'),club=useGLTF('/models/club-room.glb?v=20261108-play6');
  const textures=useMemo(surfaceTextures,[]);
  const t=useMemo(()=>optimized(table.scene,cloth,venue,false,textures),[table.scene,cloth,venue,textures]);
  const r=useMemo(()=>optimized(club.scene,cloth,venue,true,textures),[club.scene,cloth,venue,textures]);
@@ -60,4 +60,4 @@ export default function ClubModel({cloth='green',venue='club',hero=false}:{cloth
  useEffect(()=>()=>Object.values(textures).forEach(t=>t.dispose()),[textures]);
  return <><primitive object={t}/>{!hero&&<primitive object={r}/>}</>
 }
-useGLTF.preload('/models/club-table.glb?v=20261108-play4');
+useGLTF.preload('/models/club-table.glb?v=20261108-play6');

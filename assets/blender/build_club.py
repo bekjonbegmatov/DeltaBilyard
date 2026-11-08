@@ -2,7 +2,7 @@ import bpy, math, random, os
 from mathutils import Vector
 ROOT='/Users/behruz/Documents/ChatGPT/DeltaBilyard'
 random.seed(8)
-scene=bpy.data.scenes.new('DeltaBilyard Atelier')
+scene=bpy.data.scenes.new('DeltaBilyard Compact Pockets')
 bpy.context.window.scene=scene
 
 def enum(cls,prop,value):
@@ -68,7 +68,7 @@ cut(rail,opening);table.remove(opening);bpy.data.objects.remove(opening,do_unlin
 bed=cube('Tournament cloth',(0,0,-.007),(2.54,1.27,.026),felt)
 # Pocket throats sit BEHIND the nose lines, with open tapered mouths.
 # Playable surface is 2.54 x 1.27; balls are 57.15 mm in diameter.
-pockets=[(-1.310,-.675),(0,-.680),(1.310,-.675),(-1.310,.675),(0,.680),(1.310,.675)]
+pockets=[(-1.296,-.661),(0,-.667),(1.296,-.661),(-1.296,.661),(0,.667),(1.296,.661)]
 def prism(name,points,z0,z1,mat):
     n=len(points);verts=[(x,y,z) for z in (z0,z1) for x,y in points]
     faces=[tuple(reversed(range(n))),tuple(range(n,2*n))]+[(j,(j+1)%n,(j+1)%n+n,j+n) for j in range(n)]
@@ -76,14 +76,14 @@ def prism(name,points,z0,z1,mat):
     o=bpy.data.objects.new(name,mesh);scene.collection.objects.link(o);o.data.materials.append(mat);table.append(o);return o
 for i,(x,y) in enumerate(pockets):
     sx=1 if x>0 else -1;sy=1 if y>0 else -1
-    radius=.061 if x else .064
+    radius=.051 if x else .055
     cutter=cylinder('temporary pocket cutter',(x,y,-.08),radius,.70,black)
     for o in [rail,bed,body]:cut(o,cutter)
     table.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
     if x:
-        pts=[(sx*1.192,sy*.634),(sx*1.269,sy*.557),(sx*1.364,sy*.652),(sx*1.287,sy*.729)]
+        pts=[(sx*1.196,sy*.634),(sx*1.269,sy*.561),(sx*1.330,sy*.622),(sx*1.257,sy*.695)]
     else:
-        pts=[(-.068,sy*.634),(.068,sy*.634),(.053,sy*.735),(-.053,sy*.735)]
+        pts=[(-.061,sy*.634),(.061,sy*.634),(.047,sy*.710),(-.047,sy*.710)]
     # Sort around centroid to maintain a convex, correctly wound cutter.
     cx=sum(p[0] for p in pts)/4;cy=sum(p[1] for p in pts)/4
     pts.sort(key=lambda p:math.atan2(p[1]-cy,p[0]-cx))
@@ -91,7 +91,9 @@ for i,(x,y) in enumerate(pockets):
     for o in [rail,bed,body]:cut(o,cutter)
     table.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
     # Dark shelf follows the funnel, below the cloth. No cylinders above the bed.
-    prism('Pocket %d mouth shadow'%i,pts,-.035,-.030,black)
+    shelf=prism('Pocket %d mouth shadow'%i,pts,-.035,-.030,leather)
+    bore=cylinder('temporary shelf bore',(x,y,-.03),radius,.15,black)
+    cut(shelf,bore);table.remove(bore);bpy.data.objects.remove(bore,do_unlink=True)
     cylinder('Pocket %d bottom'%i,(x,y,-.10),radius,.008,black)
     # Inner leather bore stops at felt height, never floats above playing surface.
     verts=[];faces=[];n=48
@@ -119,9 +121,9 @@ def cushion(name,x0,x1,y,sign):
     mesh=bpy.data.meshes.new(name);mesh.from_pydata(verts,[],faces);mesh.update();o=bpy.data.objects.new(name,mesh);scene.collection.objects.link(o);o.data.materials.append(rubber);table.append(o)
     bpy.context.view_layer.objects.active=o;o.select_set(True);mod=o.modifiers.new('Rounded cushion edge',enum(bpy.types.Modifier,'type','BEVEL'));mod.width=.005;mod.segments=3;bpy.ops.object.modifier_apply(modifier=mod.name);o.select_set(False)
 for sign in [-1,1]:
-    cushion('Long cushion left',-1.192,-.068,sign*.635,sign)
-    cushion('Long cushion right',.068,1.192,sign*.635,sign)
-    cushion('End cushion',-.557,.557,sign*1.27,sign)
+    cushion('Long cushion left',-1.196,-.061,sign*.635,sign)
+    cushion('Long cushion right',.061,1.196,sign*.635,sign)
+    cushion('End cushion',-.561,.561,sign*1.27,sign)
     short=table[-1];short.rotation_euler[2]=-math.pi/2
 for y in [-.755,.755]:
     for x in [-.9525,-.635,-.3175,.3175,.635,.9525]:

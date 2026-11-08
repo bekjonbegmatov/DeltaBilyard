@@ -2,5 +2,9 @@
 .native-controls{position:fixed;z-index:1000;top:6px;height:32px;display:flex;align-items:center;padding:0 16px;border-radius:22px;background:#343c34;color:#fff;font:16px system-ui;pointer-events:none}.native-close{left:56px}.native-menu{right:12px}.device-cutout{position:fixed;left:0;top:40%;height:90px;width:26px;background:#000;border-radius:0 16px 16px 0;z-index:1000;pointer-events:none}
 </style></head><body><div class="native-controls native-close">× Закрыть</div><div class="native-controls native-menu">⌄ •••</div><div class="device-cutout"></div><div id="root"></div><script>
 // Development-only visual harness; not included in Vite's production entry.
-window.Telegram={WebApp:{initData:'',isFullscreen:true,ready(){},expand(){},isVersionAtLeast(){return true},requestFullscreen(){},lockOrientation(){},unlockOrientation(){},disableVerticalSwipes(){},safeAreaInset:{top:0,bottom:0,left:44,right:0},contentSafeAreaInset:{top:44,bottom:0,left:0,right:0}}};
+const listeners=new Map();
+const app={initData:'',isFullscreen:true,viewportHeight:innerHeight,viewportStableHeight:innerHeight,ready(){},expand(){},isVersionAtLeast(){return true},requestFullscreen(){},lockOrientation(){},unlockOrientation(){},disableVerticalSwipes(){},onEvent(name,fn){if(!listeners.has(name))listeners.set(name,new Set());listeners.get(name).add(fn)},offEvent(name,fn){listeners.get(name)?.delete(fn)},safeAreaInset:{top:0,bottom:0,left:innerWidth>innerHeight?44:0,right:0},contentSafeAreaInset:{top:44,bottom:0,left:0,right:0}};
+window.Telegram={WebApp:app};
+// Keep SDK viewportHeight deliberately stale across resize to reproduce Telegram's rotation race.
+window.addEventListener('resize',()=>setTimeout(()=>{app.safeAreaInset.left=innerWidth>innerHeight?44:0;for(const name of ['viewportChanged','safeAreaChanged'])listeners.get(name)?.forEach(fn=>fn({isStateStable:true}))},180));
 </script><script type="module" src="/src/main.tsx"></script></body></html>

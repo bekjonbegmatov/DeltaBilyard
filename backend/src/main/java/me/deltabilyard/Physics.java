@@ -4,18 +4,21 @@ import java.util.*;
 /** SI units; playable bed 2.54 x 1.27 m. Deterministic fixed-step simulation. */
 public final class Physics {
   public static final double W=2.54,H=1.27,R=.028575,DT=1.0/240;
-  public static final double[][] POCKETS={{-.04,-.04},{W/2,-.045},{W+.04,-.04},{-.04,H+.04},{W/2,H+.045},{W+.04,H+.04}};
+  public static final double MAX_CUE_SPEED=4.8;
+  public static double speedForPower(double power){return MAX_CUE_SPEED*Math.pow(power,1.45);}
+  public static double powerForSpeed(double speed){return Math.max(.02,Math.min(1,Math.pow(Math.max(0,speed)/MAX_CUE_SPEED,1/1.45)));}
+  public static final double[][] POCKETS={{-.026,-.026},{W/2,-.032},{W+.026,-.026},{-.026,H+.026},{W/2,H+.032},{W+.026,H+.026}};
   public static final double[][] CUSHIONS=makeCushions();
   private static double[][] makeCushions(){
     List<double[]> v=new ArrayList<>();
     for(double y:new double[]{0,H}){double sign=y==0?-1:1;
-      v.add(new double[]{.078,y,W/2-.068,y});v.add(new double[]{W/2+.068,y,W-.078,y});
-      v.add(new double[]{W/2-.068,y,W/2-.053,y+sign*.10});v.add(new double[]{W/2+.068,y,W/2+.053,y+sign*.10});
+      v.add(new double[]{.074,y,W/2-.061,y});v.add(new double[]{W/2+.061,y,W-.074,y});
+      v.add(new double[]{W/2-.061,y,W/2-.047,y+sign*.075});v.add(new double[]{W/2+.061,y,W/2+.047,y+sign*.075});
     }
-    for(double x:new double[]{0,W})v.add(new double[]{x,.078,x,H-.078});
+    for(double x:new double[]{0,W})v.add(new double[]{x,.074,x,H-.074});
     for(double x:new double[]{0,W})for(double y:new double[]{0,H}){double sx=x==0?-1:1,sy=y==0?-1:1;
-      v.add(new double[]{x-sx*.078,y,x-sx*.005,y+sy*.077});
-      v.add(new double[]{x,y-sy*.078,x+sx*.077,y-sy*.005});
+      v.add(new double[]{x-sx*.074,y,x-sx*.005,y+sy*.060});
+      v.add(new double[]{x,y-sy*.074,x+sx*.060,y-sy*.005});
     }
     return v.toArray(double[][]::new);
   }
@@ -35,9 +38,9 @@ public final class Physics {
   }
   public static Shot simulate(List<Ball> initial,double angle,double power,double spinX,double spinY){
     if(!Double.isFinite(angle)||!Double.isFinite(power)||!Double.isFinite(spinX)||!Double.isFinite(spinY)||power<.02||power>1||Math.hypot(spinX,spinY)>1.001)throw new IllegalArgumentException("Недопустимый удар");
-    List<Ball> b=initial.stream().map(Ball::copy).toList();Ball cue=b.get(0);cue.vx=Math.cos(angle)*power*6;cue.vy=Math.sin(angle)*power*6;cue.sx=spinX;cue.sy=spinY;
+    List<Ball> b=initial.stream().map(Ball::copy).toList();Ball cue=b.get(0);double speed0=speedForPower(power);cue.vx=Math.cos(angle)*speed0;cue.vy=Math.sin(angle)*speed0;cue.sx=spinX;cue.sy=spinY;
     List<Frame> frames=new ArrayList<>();List<Event> events=new ArrayList<>();int contact=-1;boolean rail=false;double t=0;
-    frames.add(frame(0,b));
+    frames.add(frame(0,b));events.add(new Event(0,"cue",0,-1,-1,speed0));
     for(int step=1;step<=240*24;step++){
       t=step*DT;boolean moving=false;
       for(Ball a:b){if(a.pocketed)continue;
@@ -47,7 +50,7 @@ public final class Physics {
           a.x+=a.vx*DT;a.y+=a.vy*DT;
           double factor=Math.max(0,(speed-.23*DT)/speed);a.vx*=factor;a.vy*=factor;
         }else{a.vx=0;a.vy=0;}
-        for(int p=0;p<6;p++){double[] pt=POCKETS[p];double radius=(p==1||p==4)?.044:.045;
+        for(int p=0;p<6;p++){double[] pt=POCKETS[p];double radius=(p==1||p==4)?.034:.033;
           if((a.x-pt[0])*(a.x-pt[0])+(a.y-pt[1])*(a.y-pt[1])<radius*radius){a.pocketed=true;a.vx=a.vy=0;events.add(new Event(t,"pocket",a.id,-1,p,speed));break;}}
         if(a.pocketed)continue;
         boolean hit=false;
