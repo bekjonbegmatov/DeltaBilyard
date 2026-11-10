@@ -14,14 +14,24 @@ import {legalTargetIds} from './gameRules';
 export {pockets} from './tableGeometry';
 const colors=['#fff9e7','#eac129','#2775b5','#d3413a','#8b55ad','#ec8735','#248a63','#8f293a','#181c20','#eac129','#2775b5','#d3413a','#8b55ad','#ec8735','#248a63','#8f293a'];
 export function rack():Ball[]{const b:Ball[]=[{id:0,x:W*.25,y:H/2,pocketed:false}];let k=0;const ids=[1,9,2,10,8,3,4,11,5,12,6,13,7,14,15];for(let r=0;r<5;r++)for(let c=0;c<=r;c++)b.push({id:ids[k++],x:W*.72+r*R*Math.sqrt(3)*1.005,y:H/2+(2*c-r)*R*1.005,pocketed:false});return b.sort((a,b)=>a.id-b.id)}
-function texture(id:number,style='classic'){const c=document.createElement('canvas');c.width=256;c.height=128;const x=c.getContext('2d')!;const ink=style==='black'?'#171d23':style==='ivory'?'#d5c8a7':colors[id];x.fillStyle=id===0?'#fff9e7':style==='classic'&&id>8?'#fff9e7':ink;x.fillRect(0,0,256,128);if(id>8){x.fillStyle=style==='classic'?colors[id]:style==='black'?'#40494f':'#a79b7b';x.fillRect(0,32,256,64)}if(id){for(const at of [64,192]){x.beginPath();x.arc(at,64,20,0,Math.PI*2);x.fillStyle='#fff9e7';x.fill();x.fillStyle='#17211d';x.font='bold 27px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(''+id,at,65)}}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+function texture(id:number,style='classic'){
+ const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d')!;
+ const ink=style==='black'?'#171d23':style==='ivory'?'#d5c8a7':colors[id];
+ x.fillStyle=id===0?'#fff9e7':style==='classic'&&id>8?'#fff9e7':ink;x.fillRect(0,0,512,256);
+ if(id>8){x.fillStyle=style==='classic'?colors[id]:style==='black'?'#40494f':'#a79b7b';x.fillRect(0,64,512,128)}
+ if(id)for(const at of [128,384]){x.beginPath();x.arc(at,128,44,0,Math.PI*2);x.fillStyle='#ffffff';x.fill();x.fillStyle='#080a09';x.font='800 66px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(''+id,at,130)}
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
 // A local studio reflection map: no network asset or expensive live cube capture.
 function StudioEnvironment(){const {gl,scene}=useThree();useEffect(()=>{const generator=new THREE.PMREMGenerator(gl);const studio=new RoomEnvironment();const target=generator.fromScene(studio,.04);const previous=scene.environment;scene.environment=target.texture;scene.environmentIntensity=.38;studio.dispose();generator.dispose();return()=>{scene.environment=previous;target.dispose()}},[gl,scene]);return null}
 function contactTexture(){const canvas=document.createElement('canvas');canvas.width=canvas.height=64;const context=canvas.getContext('2d')!;const gradient=context.createRadialGradient(32,32,4,32,32,32);gradient.addColorStop(0,'rgba(0,0,0,.62)');gradient.addColorStop(.35,'rgba(0,0,0,.35)');gradient.addColorStop(1,'rgba(0,0,0,0)');context.fillStyle=gradient;context.fillRect(0,0,64,64);return new THREE.CanvasTexture(canvas)}
 export type CameraMode='top'|'aim'|'free';
 type Props={room?:Room;angle?:number;power?:number;mine?:boolean;offset?:number;skipReplay?:boolean;onAim?:(a:number)=>void;onPlace?:(x:number,y:number)=>void;called?:number;onPocket?:(p:number)=>void;hero?:boolean;cameraMode?:CameraMode;cloth?:string;venue?:string;cueStyle?:string;ballStyle?:string};
-function Scene(p:Props){const balls=useMemo(()=>rack(),[]),meshes=useRef<(THREE.Mesh|null)[]>([]),shadows=useRef<(THREE.Mesh|null)[]>([]),camera=useRef<THREE.PerspectiveCamera>(null),cue=useRef<THREE.Group>(null),lastT=useRef(-1),lastShot=useRef(0),lastMode=useRef(''),look=useRef(new THREE.Vector3());const textures=useMemo(()=>Array.from({length:16},(_,i)=>texture(i,p.ballStyle)),[p.ballStyle]);const shadowMap=useMemo(contactTexture,[]);const [low,setLow]=useState(false);const mode=p.cameraMode||'top';
- useEffect(()=>()=>{textures.forEach(t=>t.dispose());shadowMap.dispose()},[textures,shadowMap]);
+function Scene(p:Props){const balls=useMemo(()=>rack(),[]),meshes=useRef<(THREE.Mesh|null)[]>([]),shadows=useRef<(THREE.Mesh|null)[]>([]),camera=useRef<THREE.PerspectiveCamera>(null),cue=useRef<THREE.Group>(null),lastT=useRef(-1),lastShot=useRef(0),lastMode=useRef(''),look=useRef(new THREE.Vector3());
+ const textures=useMemo(()=>Array.from({length:16},(_,i)=>texture(i,p.ballStyle)),[p.ballStyle]);
+ const shadowMap=useMemo(contactTexture,[]);const [low,setLow]=useState(false);const mode=p.cameraMode||'top';
+ useEffect(()=>()=>textures.forEach(t=>t.dispose()),[textures]);
+ useEffect(()=>()=>shadowMap.dispose(),[shadowMap]);
  useFrame(({size},delta)=>{const room=p.room;let positions=(room?.balls||balls).map(b=>[b.x,b.y,b.pocketed?1:0]);let replay=false;let t=0;let clip:ReturnType<typeof replayAt>=null;
   if(room?.shot){const shot=room.shot;const elapsed=(Date.now()+(p.offset||0)-room.shotAt)/1000;clip=!p.skipReplay?replayAt(shot,elapsed):null;replay=!!clip;
    t=clip?clip.t:Math.max(0,Math.min(shot.duration,elapsed));

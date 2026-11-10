@@ -3,6 +3,15 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.*;
 class PhysicsTest {
+ @Test void previewHasExactlyTheAuthoritativeOutcomeWithoutReplayFrames(){
+  for(double[] input:new double[][]{{0,.98,0,0},{.013,.72,.4,-.5},{-.23,.5,-.5,.4}}){
+   var balls=Physics.rack();var full=Physics.simulate(balls,input[0],input[1],input[2],input[3]);var preview=Physics.preview(balls,input[0],input[1],input[2],input[3]);
+   assertTrue(preview.frames().isEmpty());assertFalse(full.frames().isEmpty());assertEquals(full.events(),preview.events());
+   assertEquals(full.firstContact(),preview.firstContact());assertEquals(full.railAfterContact(),preview.railAfterContact());assertEquals(full.duration(),preview.duration());
+   for(int i=0;i<balls.size();i++){var a=full.balls().get(i);var b=preview.balls().get(i);assertEquals(a.id,b.id);assertEquals(a.x,b.x);assertEquals(a.y,b.y);assertEquals(a.vx,b.vx);assertEquals(a.vy,b.vy);assertEquals(a.sx,b.sx);assertEquals(a.sy,b.sy);assertEquals(a.pocketed,b.pocketed);}
+   assertEquals(Physics.W*.25,balls.get(0).x);assertEquals(Physics.H/2,balls.get(0).y);assertFalse(balls.get(0).pocketed);assertEquals(0,balls.get(0).vx);
+  }
+ }
  @Test void breakIsDeterministicAndStops(){var a=Physics.simulate(Physics.rack(),0,.85,0,0);var b=Physics.simulate(Physics.rack(),0,.85,0,0);assertEquals(a.frames().size(),b.frames().size()); for(int i=0;i<a.frames().size();i++)for(int j=0;j<16;j++)assertArrayEquals(a.frames().get(i).balls()[j],b.frames().get(i).balls()[j]);}
  @Test void cueHitsRackWithoutTunnelling(){var s=Physics.simulate(Physics.rack(),0,1,0,0);assertEquals(1,s.firstContact());assertTrue(s.events().stream().anyMatch(e->e.type().equals("collision")));assertTrue(s.duration()<24);assertTrue(s.balls().stream().allMatch(b->b.vx==0&&b.vy==0));}
  @Test void finalPositionsMatchForSameInput(){var a=Physics.simulate(Physics.rack(),.01,.7,.2,-.3);var b=Physics.simulate(Physics.rack(),.01,.7,.2,-.3);for(int i=0;i<16;i++){assertEquals(a.balls().get(i).x,b.balls().get(i).x);assertEquals(a.balls().get(i).y,b.balls().get(i).y);}}

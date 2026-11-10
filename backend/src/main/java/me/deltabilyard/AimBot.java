@@ -4,7 +4,9 @@ import java.util.*;
 
 /** Bounded geometric planning; never searches or simulates whole game trees. */
 final class AimBot {
- record Plan(double angle,double power,int pocket,int target,double score){}
+ record Plan(double angle,double power,int pocket,int target,double score,double spinX,double spinY){
+  Plan(double angle,double power,int pocket,int target,double score){this(angle,power,pocket,target,score,0,0);}
+ }
  private static final double CLEARANCE=Physics.R*2.02;
  static boolean legal(Physics.Ball b,int group,boolean cleared,boolean breaking){
   return !b.pocketed&&b.id>0&&(breaking?b.id==1:cleared?b.id==8:group==0?b.id!=8:Rules.group(b.id)==group);
@@ -15,6 +17,7 @@ final class AimBot {
   return !b.pocketed&&b.id>0&&(breaking?b.id==1:ruleSet.equals("nine")?b.id==Rules.lowest(balls):true);
  }
  static Plan choose(List<Physics.Ball> balls,int group,boolean breaking,String level,long seed,String ruleSet){
+  if(level.equals("expert"))return ExpertBot.search(balls,group,breaking,ruleSet).plan();
   Physics.Ball cue=balls.get(0);boolean cleared=group!=0&&Rules.cleared(balls,group);
   Random random=new Random(seed);
   if(breaking)return new Plan(Math.atan2(balls.get(1).y-cue.y,balls.get(1).x-cue.x)+noise(level,random)*.15,level.equals("beginner")?.67:.88,-1,1,0);
@@ -55,6 +58,9 @@ final class AimBot {
  }
  static double noise(String level,Random random){return (random.nextDouble()*2-1)*(level.equals("beginner")?.055:level.equals("medium")?.012:.0015);}
  static double[] placement(List<Physics.Ball> balls,int group,boolean breaking){return placement(balls,group,breaking,"eight");}
+ static double[] placement(List<Physics.Ball> balls,int group,boolean breaking,String ruleSet,String level){
+  return level.equals("expert")?ExpertBot.placement(balls,group,breaking,ruleSet):placement(balls,group,breaking,ruleSet);
+ }
  static double[] placement(List<Physics.Ball> balls,int group,boolean breaking,String ruleSet){
   boolean cleared=group!=0&&Rules.cleared(balls,group);
   for(Physics.Ball ball:balls){if(!legal(ball,balls,group,cleared,breaking,ruleSet))continue;

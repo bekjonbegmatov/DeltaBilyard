@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {request,player,connect,until} from './test-client.mjs';
 const seed=Date.now()%100000000;
-await Promise.all(['beginner','medium','pro'].map(async(botLevel,i)=>{
+await Promise.all(['beginner','medium','pro','expert'].map(async(botLevel,i)=>{
  const human=await player(seed+i),r=await request('/rooms',{mode:'bot',botLevel,ballStyle:i===1?'black':'ivory',seconds:60,target:1,hints:true},human.token);
  const client=await connect(human,r.code);
  try{

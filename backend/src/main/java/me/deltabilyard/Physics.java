@@ -58,11 +58,14 @@ public final class Physics {
     }
     throw new IllegalStateException("Нет свободного места для выставления шара");
   }
-  public static Shot simulate(List<Ball> initial,double angle,double power,double spinX,double spinY){
+  public static Shot simulate(List<Ball> initial,double angle,double power,double spinX,double spinY){return integrate(initial,angle,power,spinX,spinY,true);}
+  /** Identical authoritative physics, without allocating replay frames for AI trials. */
+  public static Shot preview(List<Ball> initial,double angle,double power,double spinX,double spinY){return integrate(initial,angle,power,spinX,spinY,false);}
+  private static Shot integrate(List<Ball> initial,double angle,double power,double spinX,double spinY,boolean record){
     if(!Double.isFinite(angle)||!Double.isFinite(power)||!Double.isFinite(spinX)||!Double.isFinite(spinY)||power<.02||power>1||Math.hypot(spinX,spinY)>1.001)throw new IllegalArgumentException("Недопустимый удар");
     List<Ball> b=initial.stream().map(Ball::copy).toList();Ball cue=b.get(0);double speed0=speedForPower(power);cue.vx=Math.cos(angle)*speed0;cue.vy=Math.sin(angle)*speed0;cue.sx=spinX;cue.sy=spinY;
     List<Frame> frames=new ArrayList<>();List<Event> events=new ArrayList<>();int contact=-1;boolean rail=false;double t=0;
-    frames.add(frame(0,b));events.add(new Event(0,"cue",0,-1,-1,speed0));
+    if(record)frames.add(frame(0,b));events.add(new Event(0,"cue",0,-1,-1,speed0));
     for(int step=1;step<=240*24;step++){
       t=step*DT;boolean moving=false;
       for(Ball a:b){if(a.pocketed)continue;
@@ -89,10 +92,10 @@ public final class Physics {
         if(a.id==0){a.vx+=Math.cos(angle)*a.sy*.18;a.vy+=Math.sin(angle)*a.sy*.18;a.sy=0;}
         events.add(new Event(t,"collision",a.id,c.id,-1,v));
       }
-      if(step%8==0)frames.add(frame(t,b));
+      if(record&&step%8==0)frames.add(frame(t,b));
       if(!moving&&step>2)break;
     }
-    for(Ball a:b){a.vx=a.vy=a.sx=a.sy=0;}frames.add(frame(t,b));
+    for(Ball a:b){a.vx=a.vy=a.sx=a.sy=0;}if(record)frames.add(frame(t,b));
     return new Shot(b,frames,events,contact,rail,t);
   }
   static Frame frame(double t,List<Ball>b){return new Frame(t,b.stream().map(a->new double[]{Math.rint(a.x*10000)/10000,Math.rint(a.y*10000)/10000,a.pocketed?1:0}).toArray(double[][]::new));}

@@ -34,7 +34,7 @@ import java.util.function.BiConsumer;
  @PostConstruct void restore(){db.query("SELECT state::text FROM rooms WHERE updated_at > now()-interval '24 hours'",r->{try{Room room=json.readValue(r.getString(1),Room.class);normalizeSeats(room);long now=System.currentTimeMillis();room.lastTick=now;room.deadline=Math.max(room.deadline,now+10000);for(Seat seat:room.seats)if(seat.user.id()>0)room.disconnected.put(seat.user.id(),now);rooms.put(room.code,room);}catch(Exception e){throw new IllegalStateException("Cannot recover room",e);}});}
  Room get(String code,long id){Room r=rooms.get(code);if(r==null)throw new IllegalArgumentException("Комната не найдена");if(r.seats.stream().noneMatch(s->s.user.id()==id))throw new IllegalArgumentException("Нет доступа к комнате");return r;}
  synchronized Room create(long id,JsonNode n){if(draining)throw new IllegalArgumentException("Обновление сервера, новые матчи временно недоступны");if(rooms.values().stream().anyMatch(r->!r.phase.equals("FINISHED")&&r.seats.stream().anyMatch(s->s.user.id()==id)))throw new IllegalArgumentException("Сначала выйдите из текущей комнаты");
-  Room r=new Room();r.ruleSet=n.path("ruleSet").asText("eight");if(!Set.of("eight","nine","free").contains(r.ruleSet))throw new IllegalArgumentException("Неизвестные правила игры");r.balls=Physics.rack(r.ruleSet);r.cloth=n.path("cloth").asText("green");r.venue=n.path("venue").asText("club");if(!Set.of("green","blue").contains(r.cloth)||!Set.of("club","loft").contains(r.venue))throw new IllegalArgumentException("Неизвестный стол");r.ballStyle=n.path("ballStyle").asText("classic");r.botLevel=n.path("botLevel").asText("medium");if(!Set.of("classic","black","ivory").contains(r.ballStyle)||!Set.of("beginner","medium","pro").contains(r.botLevel))throw new IllegalArgumentException("Неизвестное оформление или уровень бота");r.mode=n.path("mode").asText("duel");if(!Set.of("duel","team","practice","bot").contains(r.mode))throw new IllegalArgumentException("Неверный режим");r.seconds=n.path("seconds").asInt(45);r.target=n.path("target").asInt(1);r.hints=n.path("hints").asBoolean(true);
+  Room r=new Room();r.ruleSet=n.path("ruleSet").asText("eight");if(!Set.of("eight","nine","free").contains(r.ruleSet))throw new IllegalArgumentException("Неизвестные правила игры");r.balls=Physics.rack(r.ruleSet);r.cloth=n.path("cloth").asText("green");r.venue=n.path("venue").asText("club");if(!Set.of("green","blue").contains(r.cloth)||!Set.of("club","loft").contains(r.venue))throw new IllegalArgumentException("Неизвестный стол");r.ballStyle=n.path("ballStyle").asText("classic");r.botLevel=n.path("botLevel").asText("medium");if(!Set.of("classic","black","ivory").contains(r.ballStyle)||!Set.of("beginner","medium","pro","expert").contains(r.botLevel))throw new IllegalArgumentException("Неизвестное оформление или уровень бота");r.mode=n.path("mode").asText("duel");if(!Set.of("duel","team","practice","bot").contains(r.mode))throw new IllegalArgumentException("Неверный режим");r.seconds=n.path("seconds").asInt(45);r.target=n.path("target").asInt(1);r.hints=n.path("hints").asBoolean(true);
   if(!Set.of(30,45,60).contains(r.seconds)||!Set.of(1,3,5).contains(r.target))throw new IllegalArgumentException("Неверные настройки");
   if(r.mode.equals("practice"))r.target=1;
   if(rooms.size()>=9500)throw new IllegalArgumentException("Все комнаты заняты");do{r.code=String.format("%04d",random.nextInt(10000));}while(rooms.containsKey(r.code));r.hostId=id;r.seats.add(new Seat(auth.user(id),0));if(r.mode.equals("bot"))r.seats.add(botSeat(r,1,r.botLevel));rooms.put(r.code,r);save(r);return r;
@@ -70,8 +70,8 @@ import java.util.function.BiConsumer;
  }
  static Seat seatAt(Room r,int slot){return r.seats.stream().filter(s->s.slot==slot).findFirst().orElse(null);}
  static Seat botSeat(Room r,int slot,String level){
-  if(!Set.of("beginner","medium","pro").contains(level))throw new IllegalArgumentException("Неизвестный уровень бота");
-  String name=level.equals("beginner")?"Бот · новичок":level.equals("pro")?"Бот · профи":"Бот · средний";
+  if(!Set.of("beginner","medium","pro","expert").contains(level))throw new IllegalArgumentException("Неизвестный уровень бота");
+  String name=level.equals("beginner")?"Бот · новичок":level.equals("expert")?"Бот · эксперт":level.equals("pro")?"Бот · профи":"Бот · средний";
   Seat ai=new Seat(new Auth.User(r.nextBotId--,name,null,null),slot);ai.ready=true;ai.botLevel=level;return ai;
  }
  static void layoutChanged(Room r){r.seats.sort(Comparator.comparingInt(s->s.slot));r.seats.forEach(s->s.ready=s.user.id()<0);r.swapRequests.clear();r.message="Состав изменён — подтвердите готовность";}
@@ -123,14 +123,37 @@ import java.util.function.BiConsumer;
  static long replayMillis(Physics.Shot shot){long pots=shot.events().stream().filter(e->e.type().equals("pocket")&&e.ball()!=0).count();return pots==0?400:Math.min(3,Math.max(2,pots))*2400;}
  void scheduleBot(Room r,long now){
   if(r.botDue==0){r.botDue=now+850;return;}if(now<r.botDue||!botJobs.add(r.id))return;
-  try{botExecutor.execute(()->{try{synchronized(r){if(!r.phase.equals("AIM")||r.seats.get(r.turn).user.id()>=0||!r.disconnected.isEmpty())return;botTurn(r);}}catch(Exception e){System.err.println("Bot turn failed: "+e.getClass().getSimpleName());}finally{botJobs.remove(r.id);}});}catch(RejectedExecutionException busy){botJobs.remove(r.id);}
+  try{botExecutor.execute(()->{try{botTurn(r);}catch(Exception e){System.err.println("Bot turn failed: "+e.getClass().getSimpleName());}finally{botJobs.remove(r.id);}});}catch(RejectedExecutionException busy){botJobs.remove(r.id);}
+ }
+ record BotSnapshot(int seq,int turn,long userId,int group,boolean breaking,boolean ballInHand,String ruleSet,String level,long seed,List<Physics.Ball> balls){}
+ record BotMove(AimBot.Plan shot,double[] placement){}
+ // Pure planning owns a deep copy. CPU-heavy search must never hold a room monitor:
+ // the scheduler, reconnects and human commands can continue while the bot thinks.
+ BotMove planBot(BotSnapshot state){
+  double[] placement=null;
+  if(state.ballInHand()){
+   placement=AimBot.placement(state.balls(),state.group(),state.breaking(),state.ruleSet(),state.level());
+   Physics.Ball cue=state.balls().get(0);cue.x=placement[0];cue.y=placement[1];cue.pocketed=false;
+  }
+  return new BotMove(AimBot.choose(state.balls(),state.group(),state.breaking(),state.level(),state.seed(),state.ruleSet()),placement);
  }
  void botTurn(Room r){
-  normalizeSeats(r);Seat ai=r.seats.get(r.turn);long id=ai.user.id();if(id>=0)throw new IllegalArgumentException("Not a bot turn");
-  // Planning and execution share the room lock, so reconnects or other commands cannot race it.
-  if(r.ballInHand){double[] p=AimBot.placement(r.balls,r.groups[r.team()],r.breaking,r.ruleSet);command(r.code,id,json.createObjectNode().put("action","place").put("id",UUID.randomUUID().toString()).put("seq",r.seq).put("x",p[0]).put("y",p[1]));}
-  AimBot.Plan plan=AimBot.choose(r.balls,r.groups[r.team()],r.breaking,ai.botLevel==null?r.botLevel:ai.botLevel,Objects.hash(r.id,r.seq,r.round),r.ruleSet);
-  command(r.code,id,json.createObjectNode().put("action","shoot").put("id",UUID.randomUUID().toString()).put("seq",r.seq).put("angle",plan.angle()).put("power",plan.power()).put("spinX",0).put("spinY",0).put("pocket",plan.pocket()));r.botDue=0;
+  BotSnapshot state;
+  synchronized(r){
+   normalizeSeats(r);
+   if(rooms.get(r.code)!=r||!r.phase.equals("AIM")||!r.disconnected.isEmpty()||r.deadline<=now())return;
+   Seat ai=r.seats.get(r.turn);long id=ai.user.id();if(id>=0)throw new IllegalArgumentException("Not a bot turn");
+   state=new BotSnapshot(r.seq,r.turn,id,r.groups[r.team()],r.breaking,r.ballInHand,r.ruleSet,ai.botLevel==null?r.botLevel:ai.botLevel,Objects.hash(r.id,r.seq,r.round),r.balls.stream().map(Physics.Ball::copy).toList());
+  }
+  BotMove move=planBot(state);
+  synchronized(r){
+   // A disconnect/reconnect, timeout, forfeit or replacement room invalidates the
+   // entire planned move before any cue placement or shot can be applied.
+   if(rooms.get(r.code)!=r||!r.phase.equals("AIM")||r.seq!=state.seq()||r.turn!=state.turn()||r.seats.get(r.turn).user.id()!=state.userId()||!r.disconnected.isEmpty()||r.deadline<=now())return;
+   if(move.placement()!=null)command(r.code,state.userId(),json.createObjectNode().put("action","place").put("id",UUID.randomUUID().toString()).put("seq",r.seq).put("x",move.placement()[0]).put("y",move.placement()[1]));
+   AimBot.Plan plan=move.shot();
+   command(r.code,state.userId(),json.createObjectNode().put("action","shoot").put("id",UUID.randomUUID().toString()).put("seq",r.seq).put("angle",plan.angle()).put("power",plan.power()).put("spinX",plan.spinX()).put("spinY",plan.spinY()).put("pocket",plan.pocket()));r.botDue=0;
+  }
  }
  static long now(){return System.currentTimeMillis();}
 }

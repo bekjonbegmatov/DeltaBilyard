@@ -2,6 +2,8 @@ package me.deltabilyard;
 import com.fasterxml.jackson.databind.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class GamesTest {
@@ -102,6 +104,76 @@ class GamesTest {
  }
  @Test void botsExecuteBothNewRuleSetsUsingRegularCommands(){
   for(String rules:java.util.List.of("nine","free")){Games g=game();var r=room(g);r.mode="bot";r.seats.set(1,new Games.Seat(new Auth.User(-1,"Bot",null,null)));r.turn=1;preparePot(r,rules,rules.equals("nine")?9:8);r.botLevel="pro";r.ballInHand=true;r.balls.get(0).pocketed=true;g.botTurn(r);assertEquals("SHOT",r.phase);assertEquals(2,r.seq);assertFalse(r.shotMessage.startsWith("Фол"));assertEquals(rules.equals("nine")?9:8,r.shot.firstContact());g.closeBots();}
+ }
+
+ @Test void expertCanBeCreatedAndAddedToTeamWhileUnknownLevelsAreRejected(){
+  Games g=game();when(g.auth.user(1)).thenReturn(new Auth.User(1,"A",null,null));
+  var r=g.create(1,json.createObjectNode().put("mode","bot").put("botLevel","expert"));
+  assertEquals("expert",r.botLevel);assertEquals("expert",r.seats.get(1).botLevel);assertEquals("Бот · эксперт",r.seats.get(1).user.name());
+  Games team=game();var lobby=lobby(team,"team");
+  team.command(lobby.code,1,((com.fasterxml.jackson.databind.node.ObjectNode)cmd("addBot",lobby.seq)).put("slot",1).put("level","expert"));
+  assertEquals("expert",Games.seatAt(lobby,1).botLevel);assertTrue(Games.seatAt(lobby,1).ready);
+  assertThrows(IllegalArgumentException.class,()->team.command(lobby.code,1,((com.fasterxml.jackson.databind.node.ObjectNode)cmd("addBot",lobby.seq)).put("slot",2).put("level","impossible")));
+  assertThrows(IllegalArgumentException.class,()->game().create(1,json.createObjectNode().put("botLevel","impossible")));
+  g.closeBots();team.closeBots();
+ }
+ Games.Room botWithBallInHand(Games g){
+  var r=room(g);r.mode="bot";r.botLevel="expert";r.seats.set(1,new Games.Seat(new Auth.User(-1,"Expert",null,null)));r.turn=1;r.ballInHand=true;r.balls.get(0).pocketed=true;return r;
+ }
+ @Test void queuedPlanningReleasesRoomLockAndOnlyOneJobRunsPerRoom()throws Exception {
+  var entered=new CountDownLatch(1);var release=new CountDownLatch(1);var finished=new CountDownLatch(1);
+  var heldRoom=new AtomicReference<Games.Room>();var plans=new AtomicInteger();var heldLock=new AtomicBoolean();
+  Games g=new Games(mock(JdbcTemplate.class),json,mock(Auth.class)){
+   @Override BotMove planBot(BotSnapshot state){
+    plans.incrementAndGet();heldLock.set(Thread.holdsLock(heldRoom.get()));state.balls().get(0).x=.4;entered.countDown();
+    try{if(!release.await(3,TimeUnit.SECONDS))throw new AssertionError("Planning was not released");}catch(InterruptedException e){throw new RuntimeException(e);}
+    return new BotMove(new AimBot.Plan(0,.3,-1,1,0),new double[]{.4,.4});
+   }
+   @Override void botTurn(Room room){try{super.botTurn(room);}finally{finished.countDown();}}
+  };
+  var r=botWithBallInHand(g);heldRoom.set(r);double originalX=r.balls.get(0).x;var client=Executors.newSingleThreadExecutor();
+  try{
+   synchronized(r){r.botDue=1;g.scheduleBot(r,Games.now());}
+   assertTrue(entered.await(2,TimeUnit.SECONDS));assertFalse(heldLock.get(),"Expert search must not own the room monitor");
+   client.submit(()->{synchronized(r){for(int i=0;i<5;i++)g.scheduleBot(r,Games.now());}g.disconnected(r.code,1);}).get(2,TimeUnit.SECONDS);
+   assertEquals(originalX,r.balls.get(0).x,"Planning must own a deep copy of every ball");
+   release.countDown();assertTrue(finished.await(2,TimeUnit.SECONDS));assertEquals(1,plans.get());
+   assertEquals("AIM",r.phase);assertEquals(1,r.seq);assertTrue(r.ballInHand);assertTrue(r.balls.get(0).pocketed);assertNull(r.shot);
+  }finally{release.countDown();client.shutdownNow();g.closeBots();}
+ }
+ @Test void reconnectInvalidatesPlannedShotEvenWhenTurnAndPhaseStayTheSame(){
+  var heldRoom=new AtomicReference<Games.Room>();
+  Games g=new Games(mock(JdbcTemplate.class),json,mock(Auth.class)){
+   @Override BotMove planBot(BotSnapshot state){var r=heldRoom.get();disconnected(r.code,1);connected(r.code,1);return new BotMove(new AimBot.Plan(0,.3,-1,1,0),new double[]{.4,.4});}
+  };
+  var r=botWithBallInHand(g);heldRoom.set(r);g.botTurn(r);
+  assertTrue(r.disconnected.isEmpty());assertEquals(1,r.turn);assertEquals("AIM",r.phase);assertEquals(2,r.seq);assertTrue(r.ballInHand);assertNull(r.shot);g.closeBots();
+ }
+ @Test void timeoutWhileBotPlansAwardsOpponentTurnAndDiscardsPlacement(){
+  var heldRoom=new AtomicReference<Games.Room>();
+  Games g=new Games(mock(JdbcTemplate.class),json,mock(Auth.class)){
+   @Override BotMove planBot(BotSnapshot state){synchronized(heldRoom.get()){heldRoom.get().deadline=0;}tick();return new BotMove(new AimBot.Plan(0,.3,-1,1,0),new double[]{.4,.4});}
+  };
+  var r=botWithBallInHand(g);heldRoom.set(r);double originalX=r.balls.get(0).x;g.botTurn(r);
+  assertEquals(0,r.turn);assertEquals(1,r.seq);assertEquals("AIM",r.phase);assertTrue(r.ballInHand);assertTrue(r.balls.get(0).pocketed);assertEquals(originalX,r.balls.get(0).x);assertNull(r.shot);assertTrue(r.foulReason.contains("время вышло"));g.closeBots();
+ }
+ @Test void expiredOrReplacedRoomRejectsPlanBeforeAnyCommand(){
+  for(boolean replace:java.util.List.of(false,true)){
+   var heldRoom=new AtomicReference<Games.Room>();
+   Games g=new Games(mock(JdbcTemplate.class),json,mock(Auth.class)){
+    @Override BotMove planBot(BotSnapshot state){var r=heldRoom.get();if(replace){var replacement=new Room();replacement.code=r.code;rooms.put(r.code,replacement);}else r.deadline=0;return new BotMove(new AimBot.Plan(0,.3,-1,1,0),new double[]{.4,.4});}
+   };
+   var r=botWithBallInHand(g);heldRoom.set(r);g.botTurn(r);assertEquals(0,r.seq);assertTrue(r.ballInHand);assertTrue(r.commands.isEmpty());assertNull(r.shot);g.closeBots();
+  }
+ }
+ @Test void plannedSpinIsSubmittedThroughNormalShotCommand(){
+  var submitted=new AtomicReference<JsonNode>();
+  Games g=new Games(mock(JdbcTemplate.class),json,mock(Auth.class)){
+   @Override BotMove planBot(BotSnapshot state){return new BotMove(new AimBot.Plan(-Math.PI/2,Physics.powerForSpeed(1.2),1,8,0,.2,-.3),null);}
+   @Override void command(String code,long id,JsonNode n){if(n.path("action").asText().equals("shoot"))submitted.set(n.deepCopy());super.command(code,id,n);}
+  };
+  var r=botWithBallInHand(g);preparePot(r,"free",8);r.ballInHand=false;g.botTurn(r);
+  assertEquals("SHOT",r.phase);assertEquals(1,r.seq);assertNotNull(r.shot);assertEquals(.2,submitted.get().path("spinX").asDouble());assertEquals(-.3,submitted.get().path("spinY").asDouble());assertEquals(-1,r.lastShooterId);g.closeBots();
  }
 
 }
